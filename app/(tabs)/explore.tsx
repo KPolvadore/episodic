@@ -1,18 +1,74 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, TextInput } from "react-native";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import ParallaxScrollView from "@/components/parallax-scroll-view";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { getMixedFeed, type FeedItem, type FeedType } from "@/src/api/feed.api";
 
 export default function TabTwoScreen() {
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [index, setIndex] = useState<{
+    shows: { id: string; title: string }[];
+    topics: { id: string; title: string }[];
+  }>({ shows: [], topics: [] });
+
+  useEffect(() => {
+    const loadIndex = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const feedTypes: FeedType[] = [
+          "new",
+          "continue",
+          "newShowsOnly",
+          "local",
+        ];
+        const results = await Promise.all(
+          feedTypes.map((t) => getMixedFeed(t)),
+        );
+        const data = results.flat();
+        const showMap = new Map<string, { id: string; title: string }>();
+        const topicMap = new Map<string, { id: string; title: string }>();
+        data.forEach((item: FeedItem) => {
+          if (item.type === "episode" && item.show) {
+            if (!showMap.has(item.show.id)) {
+              showMap.set(item.show.id, {
+                id: item.show.id,
+                title: item.show.title,
+              });
+            }
+          }
+          // Topics not implemented in types yet, skip
+        });
+        setIndex({
+          shows: Array.from(showMap.values()),
+          topics: Array.from(topicMap.values()),
+        });
+      } catch {
+        setError("Failed to load search index");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadIndex();
+  }, []);
+
+  const q = query.trim().toLowerCase();
+  const showResults = q
+    ? index.shows.filter((s) => s.title.toLowerCase().includes(q))
+    : [];
+  const topicResults = q
+    ? index.topics.filter((t) => t.title.toLowerCase().includes(q))
+    : [];
+
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+      headerBackgroundColor={{ light: "#D0D0D0", dark: "#353636" }}
       headerImage={
         <IconSymbol
           size={310}
@@ -20,93 +76,97 @@ export default function TabTwoScreen() {
           name="chevron.left.forwardslash.chevron.right"
           style={styles.headerImage}
         />
-      }>
+      }
+    >
       <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
+        <ThemedText type="title">Explore</ThemedText>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
+      <ThemedView style={styles.container}>
+        {loading && <ThemedText>Loading...</ThemedText>}
+        {error && <ThemedText>Error: {error}</ThemedText>}
+        <TextInput
+          style={styles.input}
+          placeholder="Search shows or topics..."
+          value={query}
+          onChangeText={setQuery}
         />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
+        {q === "" ? (
+          <ThemedText style={styles.hint}>Search shows or topics…</ThemedText>
+        ) : (
+          <>
+            {showResults.length === 0 && topicResults.length === 0 ? (
+              <ThemedText style={styles.hint}>No results</ThemedText>
+            ) : (
+              <>
+                {showResults.length > 0 && (
+                  <ThemedView style={styles.section}>
+                    <ThemedText type="subtitle">Shows</ThemedText>
+                    {showResults.map((show) => (
+                      <Pressable
+                        key={show.id}
+                        style={styles.item}
+                        onPress={() => router.push(`/show/${show.id}`)}
+                      >
+                        <ThemedText>{show.title}</ThemedText>
+                      </Pressable>
+                    ))}
+                  </ThemedView>
+                )}
+                {topicResults.length > 0 && (
+                  <ThemedView style={styles.section}>
+                    <ThemedText type="subtitle">Topics</ThemedText>
+                    {topicResults.map((topic) => (
+                      <Pressable
+                        key={topic.id}
+                        style={styles.item}
+                        onPress={() => router.push(`/topic/${topic.id}`)}
+                      >
+                        <ThemedText>{topic.title}</ThemedText>
+                      </Pressable>
+                    ))}
+                  </ThemedView>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </ThemedView>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   headerImage: {
-    color: '#808080',
+    color: "#808080",
     bottom: -90,
     left: -35,
-    position: 'absolute',
+    position: "absolute",
   },
   titleContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
+  },
+  container: {
+    padding: 16,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 8,
+    marginBottom: 16,
+    borderRadius: 4,
+  },
+  hint: {
+    textAlign: "center",
+    marginTop: 20,
+  },
+  section: {
+    marginBottom: 16,
+  },
+  item: {
+    padding: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 4,
+    marginBottom: 8,
   },
 });
