@@ -1,14 +1,17 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { getMixedFeed, type FeedItem } from "@/src/api/feed.api";
+import { useCreatorStore } from "@/src/state/creator-store";
 import { useLibraryStore } from "@/src/state/library-store";
 
 export default function LibraryScreen() {
   const { savedShowIds, savedTopicIds, hydrate } = useLibraryStore();
+  const { shows: createdShows } = useCreatorStore();
   const [continueItems, setContinueItems] = useState<FeedItem[]>([]);
   const [showMap, setShowMap] = useState<Map<string, string>>(new Map());
   const [topicMap, setTopicMap] = useState<Map<string, string>>(new Map());
@@ -64,101 +67,140 @@ export default function LibraryScreen() {
 
   if (loading) {
     return (
-      <ScrollView style={styles.container}>
-        <ThemedText>Loading...</ThemedText>
-      </ScrollView>
+      <SafeAreaView style={styles.container}>
+        <ScrollView>
+          <ThemedText>Loading...</ThemedText>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <ThemedText type="title">Library</ThemedText>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <ThemedText type="title">Library</ThemedText>
 
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Continue Watching</ThemedText>
-        {continueItems.length === 0 ? (
-          <ThemedText>No continue watching items</ThemedText>
-        ) : (
-          continueItems.map((item) => {
-            if (item.type !== "episode") return null;
-            return (
+        {/* Created Shows Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Created Shows</ThemedText>
+          {createdShows.length === 0 ? (
+            <>
+              <ThemedText>No created shows yet</ThemedText>
               <Pressable
-                key={item.episode.id}
+                style={styles.item}
+                onPress={() => router.push("/create-show")}
+              >
+                <ThemedText>Create a Show</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            createdShows.map((show) => (
+              <Pressable
+                key={show.id}
                 style={styles.item}
                 onPress={() =>
                   router.push({
                     pathname: "/show/[id]",
-                    params: {
-                      id: item.show.id,
-                      episodeId: item.episode.id,
-                      fromContinue: "1",
-                    },
+                    params: { id: show.id },
                   })
                 }
               >
-                <ThemedText type="subtitle">{item.show.title}</ThemedText>
+                <ThemedText>{show.title}</ThemedText>
+              </Pressable>
+            ))
+          )}
+        </ThemedView>
+
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Continue Watching</ThemedText>
+          {continueItems.length === 0 ? (
+            <ThemedText>No continue watching items</ThemedText>
+          ) : (
+            continueItems.map((item) => {
+              if (item.type !== "episode") return null;
+              return (
+                <Pressable
+                  key={item.episode.id}
+                  style={styles.item}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/show/[id]",
+                      params: {
+                        id: item.show.id,
+                        episodeId: item.episode.id,
+                        fromContinue: "1",
+                      },
+                    })
+                  }
+                >
+                  <ThemedText type="subtitle">{item.show.title}</ThemedText>
+                  <ThemedText>
+                    S{item.episode.seasonNumber ?? 1}E
+                    {item.episode.episodeNumber} - {item.episode.title}
+                  </ThemedText>
+                </Pressable>
+              );
+            })
+          )}
+        </ThemedView>
+
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Saved Shows</ThemedText>
+          {savedShowIds.length === 0 ? (
+            <ThemedText>Nothing saved yet</ThemedText>
+          ) : (
+            savedShowIds.map((showId) => (
+              <Pressable
+                key={showId}
+                style={styles.item}
+                onPress={() =>
+                  router.push({
+                    pathname: "/show/[id]",
+                    params: { id: showId },
+                  })
+                }
+              >
                 <ThemedText>
-                  S{item.episode.seasonNumber ?? 1}E{item.episode.episodeNumber}{" "}
-                  - {item.episode.title}
+                  {showMap.get(showId) || `Show ${showId}`}
                 </ThemedText>
               </Pressable>
-            );
-          })
-        )}
-      </ThemedView>
+            ))
+          )}
+        </ThemedView>
 
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Saved Shows</ThemedText>
-        {savedShowIds.length === 0 ? (
-          <ThemedText>Nothing saved yet</ThemedText>
-        ) : (
-          savedShowIds.map((showId) => (
-            <Pressable
-              key={showId}
-              style={styles.item}
-              onPress={() =>
-                router.push({
-                  pathname: "/show/[id]",
-                  params: { id: showId },
-                })
-              }
-            >
-              <ThemedText>{showMap.get(showId) || `Show ${showId}`}</ThemedText>
-            </Pressable>
-          ))
-        )}
-      </ThemedView>
-
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Saved Topics</ThemedText>
-        {savedTopicIds.length === 0 ? (
-          <ThemedText>Nothing saved yet</ThemedText>
-        ) : (
-          savedTopicIds.map((topicId) => (
-            <Pressable
-              key={topicId}
-              style={styles.item}
-              onPress={() =>
-                router.push({
-                  pathname: "/topic/[id]",
-                  params: { id: topicId },
-                })
-              }
-            >
-              <ThemedText>
-                {topicMap.get(topicId) || `Topic ${topicId}`}
-              </ThemedText>
-            </Pressable>
-          ))
-        )}
-      </ThemedView>
-    </ScrollView>
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Saved Topics</ThemedText>
+          {savedTopicIds.length === 0 ? (
+            <ThemedText>Nothing saved yet</ThemedText>
+          ) : (
+            savedTopicIds.map((topicId) => (
+              <Pressable
+                key={topicId}
+                style={styles.item}
+                onPress={() =>
+                  router.push({
+                    pathname: "/topic/[id]",
+                    params: { id: topicId },
+                  })
+                }
+              >
+                <ThemedText>
+                  {topicMap.get(topicId) || `Topic ${topicId}`}
+                </ThemedText>
+              </Pressable>
+            ))
+          )}
+        </ThemedView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollView: {
     padding: 16,
   },
   section: {

@@ -1,12 +1,18 @@
 import { Image } from "expo-image";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Switch } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { getMixedFeed, type FeedItem, type FeedType } from "@/src/api/feed.api";
-import { router } from "expo-router";
+import {
+    getMixedFeed,
+    getShowEpisodes,
+    type FeedItem,
+    type FeedType,
+} from "@/src/api/feed.api";
+import { useCreatorStore } from "@/src/state/creator-store";
 
 export default function HomeScreen() {
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -15,27 +21,68 @@ export default function HomeScreen() {
   const [selectedFeedType, setSelectedFeedType] = useState<FeedType>("new");
   const [preferNewShowsOnly, setPreferNewShowsOnly] = useState(false);
   const [preferLocal, setPreferLocal] = useState(false);
+  const { shows: creatorShows } = useCreatorStore();
+
+  const loadFeed = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const effectiveFeedType: FeedType = preferLocal
+        ? "local"
+        : preferNewShowsOnly
+          ? "newShowsOnly"
+          : selectedFeedType;
+      const data = await getMixedFeed(effectiveFeedType);
+
+      // Add eligible creator episodes
+      const eligibleCreatorEpisodes: FeedItem[] = [];
+      for (const show of creatorShows) {
+        const episodes = await getShowEpisodes(show.id);
+        if (episodes.length > 0) {
+          eligibleCreatorEpisodes.push(...episodes);
+        }
+      }
+
+      // Merge and deduplicate by episode id
+      const allItems = [...data, ...eligibleCreatorEpisodes];
+      const episodeMap = new Map<string, FeedItem>();
+      allItems.forEach((item) => {
+        if (item.type === "episode") {
+          if (!episodeMap.has(item.episode.id)) {
+            episodeMap.set(item.episode.id, item);
+          }
+        } else {
+          // For specials, use specialId
+          const key = item.specialId || item.title;
+          if (!episodeMap.has(key)) {
+            episodeMap.set(key, item);
+          }
+        }
+      });
+      const dedupedFeed = Array.from(episodeMap.values());
+
+      setFeed(dedupedFeed);
+    } catch {
+      setError("Failed to load feed");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedFeedType, preferNewShowsOnly, preferLocal, creatorShows]);
 
   useEffect(() => {
-    const loadFeed = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const effectiveFeedType: FeedType = preferLocal
-          ? "local"
-          : preferNewShowsOnly
-            ? "newShowsOnly"
-            : selectedFeedType;
-        const data = await getMixedFeed(effectiveFeedType);
-        setFeed(data);
-      } catch {
-        setError("Failed to load feed");
-      } finally {
-        setLoading(false);
-      }
-    };
     loadFeed();
-  }, [selectedFeedType, preferNewShowsOnly, preferLocal]);
+  }, [loadFeed]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFeed();
+    }, [loadFeed]),
+  );
+
+  // Reload when creator shows change
+  useEffect(() => {
+    loadFeed();
+  }, [creatorShows, loadFeed]);
 
   const feedTypes: FeedType[] = ["new", "continue", "newShowsOnly", "local"];
 

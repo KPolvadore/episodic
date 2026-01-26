@@ -19,6 +19,9 @@ export default function EpisodeScreen() {
   const [nextEpisode, setNextEpisode] = useState<EpisodeWithShow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [playerState, setPlayerState] = useState<
+    "loading" | "ready" | "error" | "buffering"
+  >("loading");
 
   useEffect(() => {
     const loadEpisode = async () => {
@@ -47,6 +50,21 @@ export default function EpisodeScreen() {
     };
     loadEpisode();
   }, [id]);
+
+  useEffect(() => {
+    if (episodeItem) {
+      setPlayerState("loading");
+      const timer = setTimeout(() => {
+        const url = episodeItem.episode.videoUrl;
+        if (!url || url.trim() === "" || url === "mock-url") {
+          setPlayerState("error");
+        } else {
+          setPlayerState("ready");
+        }
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [episodeItem]);
 
   return (
     <ParallaxScrollView
@@ -78,7 +96,40 @@ export default function EpisodeScreen() {
             )}
           <ThemedText>Episode ID: {id}</ThemedText>
           <ThemedView style={styles.videoPlaceholder}>
-            <ThemedText>Video Placeholder</ThemedText>
+            {playerState === "loading" && <ThemedText>Loading…</ThemedText>}
+            {playerState === "buffering" && <ThemedText>Buffering…</ThemedText>}
+            {playerState === "ready" && (
+              <Pressable
+                style={styles.videoArea}
+                onPress={() => {
+                  setPlayerState("buffering");
+                  setTimeout(() => setPlayerState("ready"), 400);
+                }}
+              >
+                <ThemedText>Tap to buffer</ThemedText>
+              </Pressable>
+            )}
+            {playerState === "error" && (
+              <ThemedView>
+                <ThemedText>Video unavailable</ThemedText>
+                <Pressable
+                  style={styles.retryButton}
+                  onPress={() => {
+                    setPlayerState("loading");
+                    setTimeout(() => {
+                      const url = episodeItem.episode.videoUrl;
+                      if (!url || url.trim() === "" || url === "mock-url") {
+                        setPlayerState("error");
+                      } else {
+                        setPlayerState("ready");
+                      }
+                    }, 700);
+                  }}
+                >
+                  <ThemedText>Retry</ThemedText>
+                </Pressable>
+              </ThemedView>
+            )}
           </ThemedView>
           <ThemedView style={styles.upNextContainer}>
             <ThemedText type="subtitle">Previously on...</ThemedText>
@@ -153,6 +204,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 16,
+  },
+  videoArea: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  retryButton: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: "rgba(0,0,255,0.1)",
+    borderRadius: 4,
   },
   upNextContainer: {
     marginTop: 16,

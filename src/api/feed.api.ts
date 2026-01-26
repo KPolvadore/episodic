@@ -1,5 +1,7 @@
 // Stable feed API boundary for the Episodic App
 
+import { useCreatorStore } from "../state/creator-store";
+
 // Domain types (minimal for this boundary)
 export interface Show {
   id: string;
@@ -17,6 +19,7 @@ export interface Episode {
   duration: number;
   createdAt: Date;
   publishedAt?: Date;
+  trailerForEpisodeNumber?: number;
 }
 
 export interface EpisodeWithShow {
@@ -47,6 +50,83 @@ export type FeedType =
   | "library"
   | "newShowsOnly"
   | "local";
+
+// In-memory stores for published content
+const publishedShows = new Map<string, Show>();
+const publishedEpisodes: PublishedEpisode[] = [];
+const localPublishedEpisodesByShowId: Record<string, EpisodeWithShow[]> = {};
+
+export type PublishEpisodeInput = {
+  showId: string;
+  showTitle?: string;
+  creatorId?: string;
+  title: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  videoUrl?: string;
+  duration?: number;
+  episodeType?: "episode" | "trailer";
+  trailerForEpisodeNumber?: number;
+};
+
+export async function publishEpisode(
+  input: PublishEpisodeInput,
+): Promise<EpisodeWithShow> {
+  // Resolve show
+  let show: Show;
+  const existing = await getShowById(input.showId);
+  const creatorShow = useCreatorStore.getState().getShowById(input.showId);
+  if (existing) {
+    show = { ...existing, creatorId: input.creatorId ?? "creator-local" };
+  } else {
+    show = {
+      id: input.showId,
+      title: creatorShow?.title ?? input.showTitle ?? "New Show",
+      creatorId: input.creatorId ?? "creator-local",
+    };
+  }
+  publishedShows.set(show.id, show);
+
+  // Create episode
+  const isTrailer = input.episodeType === "trailer";
+  const episodeNumber = isTrailer ? 0 : (input.episodeNumber ?? 1);
+  const episodeId = `pub-${input.showId}-${episodeNumber}-${input.seasonNumber ?? 1}`;
+  const existingEpisode = publishedEpisodes.find((ep) => ep.id === episodeId);
+  if (existingEpisode) {
+    return {
+      type: "episode",
+      episode: existingEpisode,
+      show,
+    };
+  }
+  const episode: PublishedEpisode = {
+    id: episodeId,
+    showId: input.showId,
+    episodeNumber,
+    seasonNumber: input.seasonNumber ?? 1,
+    title: input.title,
+    videoUrl: input.videoUrl ?? "mock-url-published",
+    duration: input.duration ?? 30,
+    createdAt: new Date(),
+    publishedAt: new Date(),
+    kind: input.episodeType ?? "episode",
+    status: "published",
+    ...(isTrailer && {
+      trailerForEpisodeNumber: input.trailerForEpisodeNumber ?? 1,
+    }),
+  };
+  const episodeWithShow: EpisodeWithShow = {
+    type: "episode",
+    episode,
+    show,
+  };
+  if (!localPublishedEpisodesByShowId[input.showId]) {
+    localPublishedEpisodesByShowId[input.showId] = [];
+  }
+  localPublishedEpisodesByShowId[input.showId].push(episodeWithShow);
+
+  return episodeWithShow;
+}
 
 // Helper to normalize EpisodeWithShow for stable contract
 function normalizeEpisodeWithShow(item: EpisodeWithShow): EpisodeWithShow {
@@ -104,7 +184,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           episodeNumber: 2,
           seasonNumber: 1,
           title: "Next Adventure",
-          videoUrl: "mock-url-3",
+          videoUrl: "mock-url",
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
@@ -470,13 +550,34 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
       break;
   }
 
-  return mockEpisodes
+  const result = mockEpisodes
     .map((episode) => ({
       type: "episode" as const,
       episode,
       show: mockShows.find((s) => s.id === episode.showId)!,
     }))
     .map(normalizeEpisodeWithShow);
+
+  // Include locally published episodes in new and local feeds
+  if (feedType === "new" || feedType === "local") {
+    const allLocalEpisodes = Object.values(
+      localPublishedEpisodesByShowId,
+    ).flat();
+    result.push(...allLocalEpisodes);
+  }
+
+  return result;
+}
+
+// Corrected helper to check if a show is eligible for public feeds
+function isShowEligibleForPublicFeeds(showId: string): boolean {
+  const publishedEpisodesForShow = publishedEpisodes.filter(
+    (ep: PublishedEpisode) => ep.showId === showId,
+  );
+  const hasPublishedTrailer = publishedEpisodesForShow.some(
+    (ep) => ep.kind === "trailer" && ep.status === "published",
+  );
+  return publishedEpisodesForShow.length > 0 || hasPublishedTrailer;
 }
 
 // Mixed feed with specials
@@ -504,7 +605,13 @@ export async function getMixedFeed(feedType: FeedType): Promise<FeedItem[]> {
     );
   }
 
-  return [...episodes, ...specials];
+  // Filter episodes for public feeds
+  const filteredEpisodes = episodes.filter((item) => {
+    if (item.type !== "episode") return true; // Include specials
+    return isShowEligibleForPublicFeeds(item.show.id);
+  });
+
+  return [...filteredEpisodes, ...specials];
 }
 
 // Show-centric API helpers
@@ -517,6 +624,13 @@ export async function getShowById(
     const show = data.find((item) => item.show.id === showId)?.show;
     if (show) return { id: show.id, title: show.title };
   }
+  // Check published shows
+  const publishedShow = publishedShows.get(showId);
+  if (publishedShow)
+    return { id: publishedShow.id, title: publishedShow.title };
+  // Check creator store
+  const creatorShow = useCreatorStore.getState().getShowById(showId);
+  if (creatorShow) return { id: creatorShow.id, title: creatorShow.title };
   return null;
 }
 
@@ -524,13 +638,29 @@ export async function getShowById(
 export async function getShowEpisodes(
   showId: string,
 ): Promise<EpisodeWithShow[]> {
+  // Get feed data for all shows (including user-created ones that may have become eligible)
   const [newData, libraryData, continueData] = await Promise.all([
     getFeed("new"),
     getFeed("library"),
     getFeed("continue"),
   ]);
   const allData = [...newData, ...libraryData, ...continueData];
-  const showEpisodes = allData.filter((item) => item.show.id === showId);
+  // Add published episodes for this show
+  const publishedForShow = publishedEpisodes
+    .filter((ep) => ep.showId === showId)
+    .map((episode) => {
+      const show = publishedShows.get(episode.showId)!;
+      return { type: "episode" as const, episode, show };
+    });
+  const localForShow = localPublishedEpisodesByShowId[showId] || [];
+  const allDataWithPublished = [
+    ...allData,
+    ...publishedForShow,
+    ...localForShow,
+  ];
+  const showEpisodes = allDataWithPublished.filter(
+    (item) => item.show.id === showId,
+  );
 
   // Normalize items
   const normalizedEpisodes = showEpisodes.map(normalizeEpisodeWithShow);
@@ -545,8 +675,16 @@ export async function getShowEpisodes(
 
   const episodes = Array.from(episodeMap.values());
 
-  // Sort by seasonNumber asc, then episodeNumber asc
+  // Sort: trailers first, then by seasonNumber asc, then episodeNumber asc
   episodes.sort((a, b) => {
+    const aIsTrailer =
+      (a.episode as any).kind === "trailer" ||
+      (a.episode as any).episodeType === "trailer";
+    const bIsTrailer =
+      (b.episode as any).kind === "trailer" ||
+      (b.episode as any).episodeType === "trailer";
+    if (aIsTrailer && !bIsTrailer) return -1;
+    if (!aIsTrailer && bIsTrailer) return 1;
     const aSeason = a.episode.seasonNumber ?? 1;
     const bSeason = b.episode.seasonNumber ?? 1;
     if (aSeason !== bSeason) return aSeason - bSeason;
@@ -554,4 +692,10 @@ export async function getShowEpisodes(
   });
 
   return episodes;
+}
+
+// Define PublishedEpisode type
+export interface PublishedEpisode extends Episode {
+  kind: "trailer" | "episode";
+  status: "published" | "draft";
 }
