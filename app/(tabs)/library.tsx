@@ -74,6 +74,16 @@ export default function LibraryScreen() {
     <ScrollView style={styles.container}>
       <ThemedText type="title">Library</ThemedText>
 
+      <Pressable
+        style={styles.createButton}
+        onPress={() => router.push("/create-episode" as any)}
+      >
+        <ThemedText>Create Episode</ThemedText>
+      </Pressable>
+      <ThemedText style={styles.note}>
+        Capture flow screen comes next step.
+      </ThemedText>
+
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Continue Watching</ThemedText>
         {continueItems.length === 0 ? (
@@ -160,6 +170,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  createButton: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "rgba(0,255,0,0.1)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  note: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 8,
+    textAlign: "center",
   },
   section: {
     marginTop: 24,
