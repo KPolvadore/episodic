@@ -31,7 +31,44 @@ Episodic is series-first. Primary object is Show; uploads are Episodes (not post
 - Show Hub must render a canonical episode list for a show (not assembled from a single feed bucket).
 - Feed contracts remain stable once introduced (EpisodeWithShow includes show + episode identifiers and S/E numbers).
 - Specials: allowed as secondary content; not part of a Show, but must attach to at least one Show or Topic (e.g., recap, trailer, behind-the-scenes, Q&A).
-- “Continue Watching” is a resume pointer: one entry per show with a target episode.
+- "Continue Watching" is a resume pointer: one entry per show with a target episode.
+- Show eligibility for public feeds: User-created shows do not appear in public feeds until they have at least one published episode. Trailers are a special episode type that can be published for new shows to enable early discoverability.
+
+### Creation + Discoverability Rules (v1)
+
+- Created shows are “owned” and appear immediately in My Studio without restart.
+- Created shows auto-save for the creator and should appear in Library under a distinct section named “Created Shows” (separate from “Saved Shows”).
+- Public feed eligibility: user-created shows do not appear in public feeds until they have at least one published episode.
+- Trailer rule: a Trailer is an allowed publish type for a brand-new show (professional launch path) and counts as the first publish to unlock feed eligibility.
+
+## Ready-to-Ship Definition (v1)
+
+- V1 launch scope: BOTH platforms, Supabase backend/auth, Mux video, Sentry, EAS release.
+- Monetization explicitly OPTIONAL for v1 (Phase 4 can be post-launch).
+- Ship Gates checklist:
+  a) Auth + route gating working
+  b) Real backend read/write for shows/episodes
+  c) Mux upload + playback works on-device
+  d) Crash reporting wired (Sentry)
+  e) No unmatched routes; smoke checklist passes
+  f) EAS build+submit ready for iOS+Android
+
+## Production Readiness Workstreams (Required for v1)
+
+- Phase P0 — Environment & Config:
+  Step 01: env vars strategy (app.config + EAS secrets), dev/stage/prod configs
+  Step 02: feature flags to switch mocks → real API
+- Phase P1 — Observability:
+  Step 01: Sentry wired (errors + basic performance)
+  Step 02: minimal logging conventions (no PII)
+- Phase P2 — Backend & Auth (Supabase):
+  Step 01: Supabase project setup (dev + prod) + RLS baseline plan
+  Step 02: Supabase Auth integrated in app (session persistence + logout)
+  Step 03: API client uses auth token; 401 handling
+- Phase P3 — Release:
+  Step 01: EAS build profiles (dev/preview/production) + versioning
+  Step 02: iOS App Store submission checklist
+  Step 03: Android Play Console setup checklist (account created at launch)
 
 ## Phases
 
@@ -78,22 +115,69 @@ Episodic is series-first. Primary object is Show; uploads are Episodes (not post
 - Phase 1 — Step 30: Phase 1 hardening sweep (no unmatched routes + smoke checklist update)
 
   #### Hardening Proof
-
   - `npx tsc --noEmit`
   - `npm run lint`
 
 ### Phase 2 — Capture & Creation
 
+Note: Follow-up steps (e.g., 01b, 01c, 10b) added after original steps were marked ✅ Pass to enforce additional criteria.
+
 - Phase 2 — Step 01: Creator entrypoint: “Create Episode” routes to capture flow (UI only)
+  - “Create Episode entrypoint must carry a showId when launched from a Show Hub, OR present a Show picker if launched globally.”
+- Phase 2 — Step 01b: Remove “Create Episode” entrypoint from Library (Library is viewer-only: saved shows/topics + continue watching).
+- Phase 2 — Step 01c: Creator entrypoint must be from Show Hub (preferred) OR from a Creator/Studio entrypoint; if launched globally it MUST require show selection before continuing; enforce no orphan episodes. Create/Studio entrypoint is allowed, but MUST require selecting a show before entering the create episode flow. If Create tab displays a list of shows, then tapping a show MUST route into the create episode flow (Phase 2 Step 02 capture scaffold or the first screen of the create flow), and it MUST pass `showId` forward. The Create tab MUST NOT navigate to the Show Hub when the user is trying to create an episode. “Create Show” must be accessible from the Create/Studio entrypoint and routes to Phase 2 Step 09 flow (button or CTA), even if Step 09 already exists. Current status: Studio/Create tab lists shows and tapping a show routes to the create episode flow and passes showId. Show Hub has “Create Episode” CTA that routes to create-episode and passes showId.
+  - Implementation: app/(tabs)/create.tsx
 - Phase 2 — Step 02: Capture screen scaffold (permissions + placeholder record UI)
 - Phase 2 — Step 03: Upload pipeline stub (mock upload; progress + retry)
 - Phase 2 — Step 04: Drafts v1 (save draft metadata locally; list drafts)
+  - “Draft metadata includes title + seasonNumber + episodeNumber (auto-suggest OK; creator can override).”
+- Phase 2 — Step 04b: Draft episode is persisted locally (mock store) and appears in the Show Hub episode list.
+  - Acceptance Criteria:
+    • Creating a draft episode writes to a shared local store keyed by showId.
+    • Draft appears in the correct show’s episode list (even if tagged “Draft”).
+    • No orphan episodes: cannot create a draft without showId.
+    • No backend required; mock/local only.
+- Phase 2 — Step 04c: Draft resume: reopen a draft and restore title/hook template/previously on/next drop.
+  - Acceptance Criteria:
+    • Tapping a draft in Show Hub navigates to Create Episode with draft pre-filled.
+    • Title, hook template, previously on episodes, and next drop date are restored from draft.
+    • Changes persist on navigate away and back.
+    • No data loss; draft updates in real-time.
 - Phase 2 — Step 05: Cliffhanger/hook templates v1 (select template; store on draft)
 - Phase 2 — Step 06: Scheduling v1 (“next drop” date stored on episode)
 - Phase 2 — Step 07: “Previously on” builder v1 (select prior episodes; store recap refs)
 - Phase 2 — Step 08: Background upload safety v1 (resume upload when app returns)
 - Phase 2 — Step 09: Create Show flow v1 (show title + topic selection)
+- Phase 2 — Step 09b: Show creation is persisted locally (mock store) and becomes discoverable.
+  - Acceptance Criteria MUST include:
+    • Creating a show adds it to a shared local store (single source used by Studio list/search).
+    • Newly created show appears in the Studio/Create tab show list without restarting the app.
+    • Newly created show is reachable via navigation (tap -> Show Hub).
+    • No backend required; mock/local only.
+- Phase 2 — Step 09b-a: Create shared local creator store for user-created shows (Zustand store at src/state/creator-store.ts).
+- Phase 2 — Step 09b-b: Wire Create Show + Studio/Create list to creator store so newly created shows appear immediately and are navigable.
+- Phase 2 — Step 09c: My Studio v1 polish: professional layout + no VirtualizedList nesting warnings + clear empty states.
+  - Acceptance Criteria:
+    • Layout is clean and professional with proper spacing and typography.
+    • No VirtualizedList nesting warnings in console.
+    • Clear empty states when no shows exist.
+    • Smooth scrolling and no performance issues.
+- Phase 2 — Step 09d: Library “Created Shows” section separate from Saved Shows.
+  - Acceptance Criteria:
+    • Library has distinct sections: “Created Shows” and “Saved Shows”.
+    • Created shows appear in “Created Shows” section.
+    • Saved shows appear in “Saved Shows” section.
+    • Navigation works from both sections to Show Hub.
 - Phase 2 — Step 10: Episode publish v1 (draft → published; appears in show hub)
+  - “Block publish unless showId is selected and title is non-empty.” (this must be VERIFIED in UI as part of Step 10b)
+- Phase 2 — Step 10a: Trailer creation/publish as a special episode type for early discoverability.
+- Phase 2 — Step 10b: Verify + enforce publish gating in UI (showId selected + title non-empty) and confirm episode appears in correct season/episode order.
+- Phase 2 — Step 10c: Feed eligibility enforced: created show appears in public feeds only after first publish; titles persist correctly in feed cards.
+  - Acceptance Criteria:
+    • User-created shows do not appear in public feeds until first episode or trailer is published.
+    • After publish, show appears in feeds with correct title.
+    • Feed cards display the user-created show title accurately.
+    • No duplicates or incorrect titles in feeds..
 - Phase 2 — Step 11: Media playback reliability pass (buffer/loading states; no crashes)
 - Phase 2 — Step 12: Creator QA smoke run (create show → create episode → publish → appears)
 
@@ -127,7 +211,7 @@ Episodic is series-first. Primary object is Show; uploads are Episodes (not post
 
 Phase A0 — Auth foundations (during Phase 1 hardening)
 
-- Phase A0 — Step 01: Auth decision + provider + token strategy
+- Phase A0 — Step 01: Auth decision + provider + token strategy (Supabase Auth)
 - Phase A0 — Step 02: App auth shell (unauth stack vs authed tabs) + route gating
 - Phase A0 — Step 03: Session persistence (secure storage) + logout
 - Phase A0 — Step 04: API client auth header + 401 handling (redirect/refresh)
@@ -154,17 +238,13 @@ Phase U0 — Design system (during Phase 1)
 - Phase U0 — Step 04: Standard loading/empty/error states
 
 Phase U1 — Screen polish passes (Phases 2–3)
-(buttons/cards/chips/headers)
 
-- Phase U0 — Step 03: Navigation patterns (modal/sheet/back behavior)
-- Phase U0 — Step 04: Standard loading/empty/error states
-
-Phase U1 — Screen polish passes (Phases 2–3)
-
+- Phase U1 — Step 00: Safe-area compliance pass (no headers overlap iOS status bar; Library specifically validated).
 - Phase U1 — Step 01: Feed UI polish pass
 - Phase U1 — Step 02: Show Hub UI polish pass
 - Phase U1 — Step 03: Episode detail UI polish pass
 - Phase U1 — Step 04: Creator flow UX polish (draft/upload/retry)
+- Phase U1 — Step 05: App Store readiness polish: icons/splash, basic empty/loading/error consistency
 
 ## Data Layer & Backend (Database + APIs)
 
@@ -172,7 +252,7 @@ This workstream introduces real persistence and APIs. It runs alongside Phases 2
 
 ### Phase D0 — Data Contracts & Storage Choice (after Phase 1 core contracts)
 
-- Phase D0 — Step 01: Choose persistence stack + hosting target (e.g., Postgres + Prisma/Drizzle or Mongo + Mongoose)
+- Phase D0 — Step 01: Choose persistence stack + hosting target (Supabase Postgres + Edge Functions)
 - Phase D0 — Step 02: Define canonical schemas: User, Show, Season(optional), Episode, Special, Topic, WritersRoomMembership
 - Phase D0 — Step 03: ID strategy + indexing plan + join tables (TopicShows, SpecialShows, SpecialTopics)
 - Phase D0 — Step 04: API contracts frozen v1 + versioning rules
@@ -192,6 +272,9 @@ This workstream introduces real persistence and APIs. It runs alongside Phases 2
 - Phase D2 — Step 03: Upload session model (pre-signed URLs or direct upload) + status tracking
 - Phase D2 — Step 04: Publish workflow (draft → published) + feed inclusion rules
 - Phase D2 — Step 05: Auth endpoints/provider integration (login/signup/refresh/logout)
+- Phase D2 — Step 06: Swap mock feed.api to real API behind feature flag; keep contract stable
+- Phase D2 — Step 07: Remove mock-only paths for production build (feature flag default prod=real)
+- Phase D2 — Step 08: RLS policies for Shows/Episodes (owner can write; public can read published)
 
 ### Phase D3 — Social/Interactive Persistence
 
@@ -204,6 +287,12 @@ This workstream introduces real persistence and APIs. It runs alongside Phases 2
 - Phase D4 — Step 01: Entitlements (season pass per show)
 - Phase D4 — Step 02: Tips/transactions ledger
 - Phase D4 — Step 03: Reports + moderation queue + audit trail
+
+## Video (Mux) Integration
+
+- Step 01: Mux direct upload flow (create upload URL via backend; client uploads)
+- Step 02: Persist playbackId + asset status in DB; polling or webhook placeholder
+- Step 03: Player uses Mux playback URL; buffering states validated on-device
 
 ## Progress Log
 
@@ -232,7 +321,7 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - [x] Phase 1 — Step 21: Continue Watching semantics hardening (one resume entry per show; no per-episode spam)
 - [x] Phase 1 — Step 22: Show Hub “Up Next” logic uses canonical list (episodeId → next episode)
 - [x] Phase 1 — Step 23: “Previously on…” stub section (data shape only; UI placeholder)
-- [x] Phase 1 — Step 24: “Next drop in…” scheduling placeholder (data shape only; UI placeholder)
+- [x] Phase 1 — Step 24: “Next drop in…” scheduling placeholder (data shape + UI stub)
 - [x] Phase 1 — Step 25: Algorithm controls v1 (local toggles affect feed selection; no ranking yet)
 - [x] Phase 1 — Step 26: Topic hub v2 (shows + episodes aggregated discovery view)
 - [x] Phase 1 — Step 27: Explore search stub (search input filters mock Shows + Topics; tap navigates to /show/[id] and /topic/[id])
@@ -240,8 +329,27 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - [x] Phase 1 — Step 29: Library tab v1 (saved shows/topics + continue watching entrypoint)
 - [x] Phase 1 — Step 30: Phase 1 hardening sweep (no unmatched routes + smoke checklist update)
 - [x] Phase 2 — Step 01: Creator entrypoint: “Create Episode” routes to capture flow (UI only)
-- [ ] Phase 2 — Step 02 CURRENT: Capture screen scaffold (permissions + placeholder record UI)
-- [ ] Phase 2 — Step 03 NEXT: Upload pipeline stub (mock upload; progress + retry)
+- [x] Phase 2 — Step 01b: Remove “Create Episode” entrypoint from Library (Library is viewer-only: saved shows/topics + continue watching)
+- [x] Phase 2 — Step 01c: Creator entrypoint must be from Show Hub (preferred) OR from a Creator/Studio entrypoint; if launched globally it MUST require show selection before continuing; enforce no orphan episodes
+- [x] Phase 2 — Step 02: Capture screen scaffold (permissions + placeholder record UI)
+- [x] Phase 2 — Step 03: Upload pipeline stub (mock upload; progress + retry)
+- [x] Phase 2 — Step 04: Drafts v1 (save draft metadata locally; list drafts)
+- [x] Phase 2 — Step 04c: Draft resume: reopen a draft and restore title/hook template/previously on/next drop.
+- [x] Phase 2 — Step 05: Cliffhanger/hook templates v1 (select template; store on draft)
+- [x] Phase 2 — Step 06: Scheduling v1 (“next drop” date stored on episode)
+- [x] Phase 2 — Step 07: “Previously on” builder v1 (select prior episodes; store recap refs)
+- [x] Phase 2 — Step 08: Background upload safety v1 (resume upload when app returns)
+- [x] Phase 2 — Step 09: Create Show flow v1 (show title + topic selection)
+- [x] Phase 2 — Step 09b-a: Create shared local creator store for user-created shows (Zustand store)
+- [x] Phase 2 — Step 09b-b: Wire Create Show + Studio/Create list to creator store (newly created shows appear without restart)
+- [x] Phase 2 — Step 09c: My Studio v1 polish: professional layout + no VirtualizedList nesting warnings + clear empty states.
+- [x] Phase 2 — Step 09d: Library "Created Shows" section separate from Saved Shows.
+- [x] Phase 2 — Step 10: Episode publish v1 (draft → published; appears in show hub)
+- [x] Phase 2 — Step 10c: Feed eligibility enforced: created show appears in public feeds only after first publish; titles persist correctly in feed cards.
+- [x] Phase 2 — Step 10a: Trailer creation/publish as a special episode type for early discoverability.
+- [x] Phase 2 — Step 10b: Verify + enforce publish gating in UI (showId selected + title non-empty) and confirm episode appears in correct season/episode order
+- [x] Phase 2 — Step 11: Media playback reliability pass (buffer/loading states; no crashes)
+- [x] Phase 2 — Step 12: Creator QA smoke run (create show → create episode → publish → appears)
 
 ## Definition of Done (per step)
 
@@ -252,3 +360,21 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - `npx tsc --noEmit` passes.
 - `npm run lint` passes.
 - Acceptance Criteria met and confirmed ✅ Pass — Phase X Step NN before moving on.
+
+## Final Ship Checklist
+
+- EAS production builds succeed for iOS + Android
+- Smoke checklist:
+  - Home→Show→Episode
+  - Create Show → Create Episode → Publish
+  - Show Hub → Create Episode → Publish (preferred path)
+  - Creator/Studio → Pick Show → Create Episode → Publish (if global entrypoint exists)
+  - Explore search
+  - Library continue watching
+  - My Studio → Create Show → View Show Hub
+  - My Studio → Create Episode → Draft → Resume → Publish
+  - Library → Created Shows → Show Hub
+  - Feeds: created show appears only after first publish (episode or trailer)
+- Sentry receives a test error event
+- Supabase prod env connected (no mocks)
+- Mux playback works on-device

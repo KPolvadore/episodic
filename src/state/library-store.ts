@@ -49,6 +49,14 @@ export function useLibraryStore() {
     saveShows(newIds);
   };
 
+  const addShow = (id: string) => {
+    if (!savedShowIds.includes(id)) {
+      const newIds = [...savedShowIds, id];
+      setSavedShowIds(newIds);
+      saveShows(newIds);
+    }
+  };
+
   const toggleTopic = (id: string) => {
     const newIds = savedTopicIds.includes(id)
       ? savedTopicIds.filter((t) => t !== id)
@@ -65,6 +73,7 @@ export function useLibraryStore() {
     savedTopicIds,
     toggleShow,
     toggleTopic,
+    addShow,
     isShowSaved,
     isTopicSaved,
     hydrate,
