@@ -78,6 +78,7 @@ Episodic is series-first. Primary object is Show; uploads are Episodes (not post
 - Phase 1 — Step 30: Phase 1 hardening sweep (no unmatched routes + smoke checklist update)
 
   #### Hardening Proof
+
   - `npx tsc --noEmit`
   - `npm run lint`
 
@@ -238,8 +239,9 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - [x] Phase 1 — Step 28: Search results v1 from real data (use existing feed/mock sources; no backend yet)
 - [x] Phase 1 — Step 29: Library tab v1 (saved shows/topics + continue watching entrypoint)
 - [x] Phase 1 — Step 30: Phase 1 hardening sweep (no unmatched routes + smoke checklist update)
-- [ ] Phase 2 — Step 01 CURRENT: Creator entrypoint: “Create Episode” routes to capture flow (UI only)
-- [ ] Phase 2 — Step 02 NEXT: Capture screen scaffold (permissions + placeholder record UI)
+- [x] Phase 2 — Step 01: Creator entrypoint: “Create Episode” routes to capture flow (UI only)
+- [ ] Phase 2 — Step 02 CURRENT: Capture screen scaffold (permissions + placeholder record UI)
+- [ ] Phase 2 — Step 03 NEXT: Upload pipeline stub (mock upload; progress + retry)
 
 ## Definition of Done (per step)
 
