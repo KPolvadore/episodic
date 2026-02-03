@@ -315,6 +315,16 @@ f) EAS build+submit ready for iOS+Android
 - Acceptance Criteria: checklist exists and is used.
 - Verification: run checklist once and record.
 
+### Smoke Checklist (Updated)
+
+- Home feed → tap show → show hub opens
+- Show hub → tap episode → episode detail opens
+- Follow a show → Library shows it → open it
+- Toggle Following/Discovery → relaunch → persists
+- Tap topic chip → topic hub shows content
+- Vote on poll → placeholder updates → relaunch persists
+- Add comment → relaunch persists
+
 **Step 0-04: Lint + TypeScript baseline (tsc/lint must pass)**
 
 - Acceptance Criteria: `tsc` + `lint` pass.
@@ -1930,6 +1940,12 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - [x] Phase 3 — Step 04: Writers Room v1 (invite co-creator; roles: owner/editor/viewer)
 - [x] Phase 3 — Step 05: Draft sharing v1 (share draft with writers room)
 - [x] Phase 3 — Step 06: Stitch scenes v1 (ordered list of clips; render order)
+- [x] Phase 3 — Step 07: Polls v1 (episode contains poll; viewer can vote)
+- [x] Phase 3 — Step 08: Poll results influence “next episode prompt” placeholder
+- [x] Phase 3 — Step 09: Comments v1 (episode comments; basic post)
+- [x] Phase 3 — Step 10: Notifications v1 (invites, new episode, poll posted)
+- [x] Phase 3 — Step 11: Discovery surfaces v1 (Trending shows/topics mock)
+- [x] Phase 3 — Step 12: Phase 3 hardening sweep (navigation + persistence + quality gates)
 
 ---
 

@@ -1,9 +1,10 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { mockTopics } from "@/src/api/feed.api";
@@ -54,7 +55,7 @@ export default function CreateShowScreen() {
 
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Show Title</ThemedText>
-        <TextInput
+        <ThemedTextInput
           style={styles.textInput}
           placeholder="Show title"
           value={title}
@@ -119,8 +120,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   textInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
     padding: 8,
     marginTop: 8,
     borderRadius: 4,

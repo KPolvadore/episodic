@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
@@ -14,6 +15,18 @@ import {
     type EpisodeWithShow,
 } from "@/src/api/feed.api";
 import { getCreatorStore } from "@/src/state/creator-store";
+import {
+  COMMENTS_MAX_LENGTH,
+  type Comment,
+  useCommentsStore,
+} from "@/src/state/comments-store";
+import {
+  getGuaranteedPollForEpisode,
+  getPollForEpisode,
+  usePollStore,
+} from "@/src/state/poll-store";
+
+const EMPTY_COMMENTS: readonly Comment[] = [];
 
 export default function EpisodeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +39,32 @@ export default function EpisodeScreen() {
   const [playerState, setPlayerState] = useState<
     "loading" | "ready" | "error" | "buffering"
   >("loading");
+  const votesByPollId = usePollStore((s) => s.votesByPollId);
+  const castVote = usePollStore((s) => s.vote);
+
+  const poll = useMemo(() => {
+    if (!episodeItem) return null;
+    const basePoll = getPollForEpisode(episodeItem.episode.id);
+    if (basePoll) return basePoll;
+    const isLocalCreated = getCreatorStore().publishedEpisodes.some(
+      (ep) => ep.id === episodeItem.episode.id,
+    );
+    return isLocalCreated
+      ? getGuaranteedPollForEpisode(episodeItem.episode.id)
+      : null;
+  }, [episodeItem]);
+
+  const pollVote = poll ? votesByPollId[poll.id] : undefined;
+  const pollChoiceLabel = poll
+    ? poll.choices.find((choice) => choice.id === pollVote)?.label
+    : undefined;
+  const episodeId = typeof id === "string" ? id : "";
+  const comments = useCommentsStore((s) =>
+    episodeId ? s.getComments(episodeId) : EMPTY_COMMENTS,
+  );
+  const addComment = useCommentsStore((s) => s.addComment);
+  const [commentBody, setCommentBody] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadEpisode = async () => {
@@ -203,6 +242,50 @@ export default function EpisodeScreen() {
               </ThemedView>
             )}
           </ThemedView>
+          {poll && (
+            <ThemedView style={styles.pollContainer}>
+              <ThemedText type="subtitle">Community Poll</ThemedText>
+              <ThemedText style={styles.pollQuestion}>
+                {poll.question}
+              </ThemedText>
+              <ThemedView style={styles.pollChoices}>
+                {poll.choices.map((choice) => {
+                  const isSelected = pollVote === choice.id;
+                  return (
+                    <Pressable
+                      key={choice.id}
+                      style={[
+                        styles.pollChoice,
+                        isSelected && styles.pollChoiceSelected,
+                        pollVote && !isSelected && styles.pollChoiceDisabled,
+                      ]}
+                      disabled={!!pollVote}
+                      onPress={() => castVote(poll.id, choice.id)}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.pollChoiceText,
+                          isSelected && styles.pollChoiceTextSelected,
+                        ]}
+                      >
+                        {choice.label}
+                        {isSelected ? " ✓" : ""}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </ThemedView>
+              {pollVote ? (
+                <ThemedText style={styles.pollResult}>
+                  You voted for {pollChoiceLabel ?? "your choice"}
+                </ThemedText>
+              ) : (
+                <ThemedText style={styles.pollHint}>
+                  Tap a choice to vote. One vote per poll.
+                </ThemedText>
+              )}
+            </ThemedView>
+          )}
           <ThemedView style={styles.upNextContainer}>
             <ThemedText type="subtitle">Previously on...</ThemedText>
             {prevEpisode ? (
@@ -245,6 +328,11 @@ export default function EpisodeScreen() {
           </ThemedView>
           <ThemedView style={styles.upNextContainer}>
             <ThemedText type="subtitle">Next episode drops in…</ThemedText>
+            {pollVote && (
+              <ThemedText style={styles.pollPromptText}>
+                You voted for {pollChoiceLabel ?? "your choice"}
+              </ThemedText>
+            )}
             {nextEpisode ? (
               <>
                 <ThemedText>Next drop: Soon</ThemedText>
@@ -255,6 +343,74 @@ export default function EpisodeScreen() {
               </>
             ) : (
               <ThemedText>No next drop scheduled yet</ThemedText>
+            )}
+          </ThemedView>
+          <ThemedView style={styles.commentsContainer}>
+            <ThemedText type="subtitle">
+              Comments ({comments.length})
+            </ThemedText>
+            <ThemedView style={styles.commentComposer}>
+              <ThemedTextInput
+                style={styles.commentInput}
+                placeholder="Add a comment"
+                value={commentBody}
+                onChangeText={(text) => {
+                  setCommentBody(text);
+                  if (commentError) setCommentError(null);
+                }}
+                maxLength={COMMENTS_MAX_LENGTH}
+                multiline
+              />
+              <Pressable
+                style={[
+                  styles.commentButton,
+                  !commentBody.trim() && styles.commentButtonDisabled,
+                ]}
+                onPress={() => {
+                  const trimmed = commentBody.trim();
+                  if (!trimmed) {
+                    setCommentError("Comment cannot be empty.");
+                    return;
+                  }
+                  if (trimmed.length > COMMENTS_MAX_LENGTH) {
+                    setCommentError(
+                      `Comment must be under ${COMMENTS_MAX_LENGTH} characters.`,
+                    );
+                    return;
+                  }
+                  addComment(episodeId, trimmed);
+                  setCommentBody("");
+                  setCommentError(null);
+                }}
+                disabled={!commentBody.trim()}
+              >
+                <ThemedText style={styles.commentButtonText}>Post</ThemedText>
+              </Pressable>
+              <ThemedText style={styles.commentCount}>
+                {commentBody.length}/{COMMENTS_MAX_LENGTH}
+              </ThemedText>
+              {commentError && (
+                <ThemedText style={styles.commentError}>
+                  {commentError}
+                </ThemedText>
+              )}
+            </ThemedView>
+            {comments.length === 0 ? (
+              <ThemedText style={styles.commentEmpty}>
+                No comments yet. Start the conversation.
+              </ThemedText>
+            ) : (
+              comments.map((comment) => (
+                <ThemedView key={comment.id} style={styles.commentItem}>
+                  <ThemedText style={styles.commentAuthor}>
+                    {comment.authorName}
+                  </ThemedText>
+                  <ThemedText>{comment.body}</ThemedText>
+                  <ThemedText style={styles.commentMeta}>
+                    {new Date(comment.createdAtIso).toLocaleString()}
+                  </ThemedText>
+                </ThemedView>
+              ))
             )}
           </ThemedView>
         </>
@@ -287,6 +443,110 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: "rgba(0,0,255,0.1)",
     borderRadius: 4,
+  },
+  pollContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 10,
+    gap: 10,
+  },
+  pollQuestion: {
+    fontSize: 15,
+  },
+  pollChoices: {
+    gap: 8,
+  },
+  pollChoice: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  pollChoiceSelected: {
+    borderColor: "#4CAF50",
+    backgroundColor: "rgba(76,175,80,0.15)",
+  },
+  pollChoiceDisabled: {
+    opacity: 0.6,
+  },
+  pollChoiceText: {
+    fontSize: 14,
+  },
+  pollChoiceTextSelected: {
+    color: "#4CAF50",
+    fontWeight: "bold",
+  },
+  pollHint: {
+    fontSize: 12,
+    color: "#888",
+  },
+  pollResult: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "bold",
+  },
+  pollPromptText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "bold",
+  },
+  commentsContainer: {
+    marginTop: 16,
+    gap: 8,
+  },
+  commentComposer: {
+    gap: 8,
+    padding: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 10,
+  },
+  commentInput: {
+    minHeight: 64,
+    padding: 10,
+  },
+  commentButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,123,255,0.2)",
+  },
+  commentButtonDisabled: {
+    opacity: 0.5,
+  },
+  commentButtonText: {
+    color: "#007bff",
+    fontWeight: "bold",
+  },
+  commentCount: {
+    fontSize: 12,
+    color: "#888",
+  },
+  commentError: {
+    color: "#ff6b6b",
+    fontSize: 12,
+  },
+  commentEmpty: {
+    fontSize: 12,
+    color: "#888",
+  },
+  commentItem: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    gap: 4,
+  },
+  commentAuthor: {
+    fontSize: 12,
+    color: "#9ad0ff",
+    fontWeight: "bold",
+  },
+  commentMeta: {
+    fontSize: 11,
+    color: "#666",
   },
   upNextContainer: {
     marginTop: 16,

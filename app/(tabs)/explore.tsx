@@ -1,12 +1,28 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { getMixedFeed, type FeedItem, type FeedType } from "@/src/api/feed.api";
+
+type TrendingShow = { id: string; title: string };
+type TrendingTopic = { id: string; title: string };
+
+const TRENDING_SHOWS: TrendingShow[] = [
+  { id: "show1", title: "The Daily Grind" },
+  { id: "show2", title: "Mystery Mansion" },
+  { id: "show3", title: "Comedy Central" },
+];
+
+const TRENDING_TOPICS: TrendingTopic[] = [
+  { id: "t2", title: "Comedy" },
+  { id: "t1", title: "Horror" },
+  { id: "t3", title: "Drama" },
+];
 
 export default function TabTwoScreen() {
   const [query, setQuery] = useState("");
@@ -84,7 +100,31 @@ export default function TabTwoScreen() {
       <ThemedView style={styles.container}>
         {loading && <ThemedText>Loading...</ThemedText>}
         {error && <ThemedText>Error: {error}</ThemedText>}
-        <TextInput
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Trending Shows</ThemedText>
+          {TRENDING_SHOWS.map((show) => (
+            <Pressable
+              key={show.id}
+              style={styles.item}
+              onPress={() => router.push(`/show/${show.id}`)}
+            >
+              <ThemedText>{show.title}</ThemedText>
+            </Pressable>
+          ))}
+        </ThemedView>
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Trending Topics</ThemedText>
+          {TRENDING_TOPICS.map((topic) => (
+            <Pressable
+              key={topic.id}
+              style={styles.item}
+              onPress={() => router.push(`/topic/${topic.id}`)}
+            >
+              <ThemedText>{topic.title}</ThemedText>
+            </Pressable>
+          ))}
+        </ThemedView>
+        <ThemedTextInput
           style={styles.input}
           placeholder="Search shows or topics..."
           value={query}
@@ -150,8 +190,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
     padding: 8,
     marginBottom: 16,
     borderRadius: 4,

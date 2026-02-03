@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useCreatorStore } from "@/src/state/creator-store";
@@ -179,7 +180,7 @@ export default function WritersRoomScreen() {
       {canInvite ? (
         <ThemedView style={styles.inviteContainer}>
           <ThemedText type="subtitle">Invite Member</ThemedText>
-          <TextInput
+          <ThemedTextInput
             style={styles.textInput}
             placeholder="Display Name"
             value={inviteName}
@@ -290,12 +291,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   textInput: {
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
     borderRadius: 4,
     padding: 8,
     marginTop: 8,
-    color: "#fff",
   },
   roleSelector: {
     flexDirection: "row",

@@ -1,7 +1,9 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 interface FollowStore {
-  followedShowIds: Set<string>;
+  followedShowIds: string[];
   isShowFollowed: (showId: string) => boolean;
   followShow: (showId: string) => void;
   unfollowShow: (showId: string) => void;
@@ -9,34 +11,39 @@ interface FollowStore {
   getFollowedShowIds: () => string[];
 }
 
-export const useFollowStore = create<FollowStore>((set, get) => ({
-  followedShowIds: new Set<string>(),
-  isShowFollowed: (showId: string) => {
-    return get().followedShowIds.has(showId);
-  },
-  followShow: (showId: string) => {
-    set((state) => {
-      const newSet = new Set(state.followedShowIds);
-      newSet.add(showId);
-      return { followedShowIds: newSet };
-    });
-  },
-  unfollowShow: (showId: string) => {
-    set((state) => {
-      const newSet = new Set(state.followedShowIds);
-      newSet.delete(showId);
-      return { followedShowIds: newSet };
-    });
-  },
-  toggleFollowShow: (showId: string) => {
-    const { isShowFollowed, followShow, unfollowShow } = get();
-    if (isShowFollowed(showId)) {
-      unfollowShow(showId);
-    } else {
-      followShow(showId);
-    }
-  },
-  getFollowedShowIds: () => {
-    return Array.from(get().followedShowIds);
-  },
-}));
+export const useFollowStore = create<FollowStore>()(
+  persist(
+    (set, get) => ({
+      followedShowIds: [],
+      isShowFollowed: (showId: string) => {
+        return get().followedShowIds.includes(showId);
+      },
+      followShow: (showId: string) => {
+        set((state) => {
+          if (state.followedShowIds.includes(showId)) return state;
+          return { followedShowIds: [showId, ...state.followedShowIds] };
+        });
+      },
+      unfollowShow: (showId: string) => {
+        set((state) => ({
+          followedShowIds: state.followedShowIds.filter((id) => id !== showId),
+        }));
+      },
+      toggleFollowShow: (showId: string) => {
+        const { isShowFollowed, followShow, unfollowShow } = get();
+        if (isShowFollowed(showId)) {
+          unfollowShow(showId);
+        } else {
+          followShow(showId);
+        }
+      },
+      getFollowedShowIds: () => {
+        return get().followedShowIds;
+      },
+    }),
+    {
+      name: "follow-store",
+      storage: createJSONStorage(() => AsyncStorage),
+    },
+  ),
+);
