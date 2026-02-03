@@ -2,26 +2,40 @@ import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Switch } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import {
-    getMixedFeed,
-    getShowEpisodes,
-    type FeedItem,
-    type FeedType,
+  getMixedFeed,
+  getShowEpisodes,
+  type EpisodeWithShow,
+  type FeedItem,
+  type FeedType,
 } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
+import { useFeedStore } from "@/src/state/feed-store";
+import { useFollowStore } from "@/src/state/follow-store";
+
+type FeedShowItem = {
+  type: "show";
+  show: EpisodeWithShow["show"];
+  episode?: EpisodeWithShow["episode"];
+};
+
+type FeedViewItem = FeedShowItem | Extract<FeedItem, { type: "special" }>;
 
 export default function HomeScreen() {
-  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [feed, setFeed] = useState<FeedViewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFeedType, setSelectedFeedType] = useState<FeedType>("new");
   const [preferNewShowsOnly, setPreferNewShowsOnly] = useState(false);
   const [preferLocal, setPreferLocal] = useState(false);
   const { shows: creatorShows } = useCreatorStore();
+  const { feedMode, hydrated, setFeedMode } = useFeedStore();
+  const { isShowFollowed, getFollowedShowIds } = useFollowStore();
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -45,29 +59,88 @@ export default function HomeScreen() {
 
       // Merge and deduplicate by episode id
       const allItems = [...data, ...eligibleCreatorEpisodes];
-      const episodeMap = new Map<string, FeedItem>();
+      const episodeMap = new Map<string, EpisodeWithShow>();
+      const specialsMap = new Map<string, Extract<FeedItem, { type: "special" }>>();
       allItems.forEach((item) => {
         if (item.type === "episode") {
           if (!episodeMap.has(item.episode.id)) {
             episodeMap.set(item.episode.id, item);
           }
         } else {
-          // For specials, use specialId
           const key = item.specialId || item.title;
-          if (!episodeMap.has(key)) {
-            episodeMap.set(key, item);
+          if (!specialsMap.has(key)) {
+            specialsMap.set(key, item);
           }
         }
       });
-      const dedupedFeed = Array.from(episodeMap.values());
+      const dedupedEpisodes = Array.from(episodeMap.values());
+      const dedupedSpecials = Array.from(specialsMap.values());
 
-      setFeed(dedupedFeed);
+      // Filter for following mode if selected
+      let filteredEpisodes = dedupedEpisodes;
+      let filteredSpecials = dedupedSpecials;
+      if (feedMode === "following") {
+        const followedShowIds = getFollowedShowIds();
+        filteredEpisodes = dedupedEpisodes.filter((item) =>
+          followedShowIds.includes(item.show.id),
+        );
+        filteredSpecials = dedupedSpecials.filter(
+          (item) =>
+            item.attachedShowIds?.some((showId) =>
+              followedShowIds.includes(showId),
+            ) ?? false,
+        );
+      }
+
+      // Build show-centric cards (one per show)
+      const showCardsMap = new Map<string, FeedShowItem>();
+      const isContinueFeed = effectiveFeedType === "continue";
+      filteredEpisodes.forEach((item) => {
+        const existing = showCardsMap.get(item.show.id);
+        if (!existing) {
+          showCardsMap.set(item.show.id, {
+            type: "show",
+            show: item.show,
+            episode: item.episode,
+          });
+          return;
+        }
+        if (isContinueFeed) {
+          return;
+        }
+        const currentSeason = existing.episode?.seasonNumber ?? 1;
+        const currentEpisode = existing.episode?.episodeNumber ?? 0;
+        const nextSeason = item.episode.seasonNumber ?? 1;
+        const nextEpisode = item.episode.episodeNumber ?? 0;
+        const isLater =
+          nextSeason > currentSeason ||
+          (nextSeason === currentSeason && nextEpisode > currentEpisode);
+        if (isLater) {
+          showCardsMap.set(item.show.id, {
+            type: "show",
+            show: item.show,
+            episode: item.episode,
+          });
+        }
+      });
+
+      const showCards = Array.from(showCardsMap.values());
+      const finalFeed: FeedViewItem[] = [...showCards, ...filteredSpecials];
+
+      setFeed(finalFeed);
     } catch {
       setError("Failed to load feed");
     } finally {
       setLoading(false);
     }
-  }, [selectedFeedType, preferNewShowsOnly, preferLocal, creatorShows]);
+  }, [
+    selectedFeedType,
+    preferNewShowsOnly,
+    preferLocal,
+    creatorShows,
+    feedMode,
+    getFollowedShowIds,
+  ]);
 
   useEffect(() => {
     loadFeed();
@@ -86,6 +159,14 @@ export default function HomeScreen() {
 
   const feedTypes: FeedType[] = ["new", "continue", "newShowsOnly", "local"];
 
+  if (!hydrated) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ThemedText>Loading...</ThemedText>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
@@ -98,6 +179,42 @@ export default function HomeScreen() {
     >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Episodic Feed</ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.feedModeContainer}>
+        <Pressable
+          style={[
+            styles.feedModeButton,
+            feedMode === "discovery" && styles.feedModeButtonSelected,
+          ]}
+          onPress={() => setFeedMode("discovery")}
+        >
+          <ThemedText
+            style={
+              feedMode === "discovery"
+                ? styles.feedModeTextSelected
+                : styles.feedModeText
+            }
+          >
+            Discovery
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          style={[
+            styles.feedModeButton,
+            feedMode === "following" && styles.feedModeButtonSelected,
+          ]}
+          onPress={() => setFeedMode("following")}
+        >
+          <ThemedText
+            style={
+              feedMode === "following"
+                ? styles.feedModeTextSelected
+                : styles.feedModeText
+            }
+          >
+            Following
+          </ThemedText>
+        </Pressable>
       </ThemedView>
       <ThemedView style={styles.preferenceContainer}>
         <ThemedText>New shows only</ThemedText>
@@ -139,17 +256,24 @@ export default function HomeScreen() {
       </ThemedView>
       {loading && <ThemedText>Loading...</ThemedText>}
       {error && <ThemedText>Error: {error}</ThemedText>}
+      {!loading && !error && feedMode === "following" && feed.length === 0 && (
+        <ThemedView style={styles.emptyStateContainer}>
+          <ThemedText type="subtitle">No followed shows yet</ThemedText>
+          <ThemedText>Follow shows to see episodes here.</ThemedText>
+        </ThemedView>
+      )}
       {!loading &&
         !error &&
+        (feedMode === "discovery" || feed.length > 0) &&
         feed.map((item) => {
-          if (item.type === "episode") {
+          if (item.type === "show") {
             return (
               <Pressable
-                key={item.episode.id}
+                key={item.show.id}
                 style={styles.episodeContainer}
                 onPress={() => {
                   const params: any = { id: item.show.id };
-                  if (selectedFeedType === "continue") {
+                  if (selectedFeedType === "continue" && item.episode?.id) {
                     params.episodeId = item.episode.id;
                     params.fromContinue = "1";
                   }
@@ -159,8 +283,30 @@ export default function HomeScreen() {
                   });
                 }}
               >
-                <ThemedText type="subtitle">{item.show.title}</ThemedText>
-                <ThemedText>{item.episode.title}</ThemedText>
+                <ThemedView style={styles.showTitleRow}>
+                  <ThemedText type="subtitle">{item.show.title}</ThemedText>
+                  <ThemedView style={styles.badgeRow}>
+                    {item.episode && (
+                      <ThemedView style={styles.newEpisodeBadge}>
+                        <ThemedText style={styles.newEpisodeText}>
+                          New Episode
+                        </ThemedText>
+                      </ThemedView>
+                    )}
+                    {isShowFollowed(item.show.id) && (
+                      <ThemedView style={styles.followingBadge}>
+                        <ThemedText style={styles.followingText}>
+                          Following
+                        </ThemedText>
+                      </ThemedView>
+                    )}
+                  </ThemedView>
+                </ThemedView>
+                {item.episode ? (
+                  <ThemedText>Latest: {item.episode.title}</ThemedText>
+                ) : (
+                  <ThemedText>Open show</ThemedText>
+                )}
               </Pressable>
             );
           } else if (item.type === "special") {
@@ -187,10 +333,35 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  feedModeContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 16,
+    gap: 8,
+  },
+  feedModeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  feedModeButtonSelected: {
+    backgroundColor: "rgba(255,255,255,0.3)",
+  },
+  feedModeText: {
+    fontSize: 16,
+  },
+  feedModeTextSelected: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
   preferenceContainer: {
     flexDirection: "row",
@@ -227,6 +398,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
+  showTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  newEpisodeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: "rgba(255,165,0,0.2)",
+    borderRadius: 12,
+  },
+  newEpisodeText: {
+    fontSize: 12,
+    color: "#cc7a00",
+  },
+  followingBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: "rgba(0,0,255,0.2)",
+    borderRadius: 12,
+  },
+  followingText: {
+    fontSize: 12,
+    color: "#0066cc",
+  },
   episodeContainer: {
     gap: 4,
     marginBottom: 16,
@@ -247,5 +448,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: "absolute",
+  },
+  emptyStateContainer: {
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

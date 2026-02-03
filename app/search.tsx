@@ -1,9 +1,10 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 
 const mockShows = [
@@ -38,7 +39,7 @@ export default function SearchScreen() {
       }
     >
       <ThemedView style={styles.container}>
-        <TextInput
+        <ThemedTextInput
           style={styles.input}
           placeholder="Search shows or topics..."
           value={query}
@@ -100,8 +101,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
     padding: 8,
     marginBottom: 16,
     borderRadius: 4,

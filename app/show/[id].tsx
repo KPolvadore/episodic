@@ -10,10 +10,13 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
   getMixedFeed,
   getShowEpisodes,
+  getTopicById,
+  resolveShowById,
   type EpisodeWithShow,
   type FeedItem,
 } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
+import { useFollowStore } from "@/src/state/follow-store";
 import { useLibraryStore } from "@/src/state/library-store";
 
 export default function ShowScreen() {
@@ -25,8 +28,8 @@ export default function ShowScreen() {
   }>();
 
   const { isShowSaved, toggleShow } = useLibraryStore();
+  const { isShowFollowed, toggleFollowShow } = useFollowStore();
   const draftEpisodes = useCreatorStore((s) => s.getDraftEpisodesByShowId(id));
-  const createdShow = useCreatorStore((s) => s.getShowById(id));
 
   type RenderEpisode = {
     id: string;
@@ -41,8 +44,16 @@ export default function ShowScreen() {
   const [episodes, setEpisodes] = useState<EpisodeWithShow["episode"][]>([]);
   const [specials, setSpecials] = useState<FeedItem[]>([]);
   const [showTitle, setShowTitle] = useState<string>("Unknown Show");
+  const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<string>("unknown");
+  const [resolvedTopicId, setResolvedTopicId] = useState<string | undefined>();
+  const [resolvedTopicName, setResolvedTopicName] = useState<
+    string | undefined
+  >();
+  const [rawTopicKeys, setRawTopicKeys] = useState<string[]>([]);
+  const [resolvedShow, setResolvedShow] = useState<any>(null);
 
   const mergedEpisodes = useMemo(() => {
     const publishedMapped = episodes.map((e) => ({
@@ -98,14 +109,46 @@ export default function ShowScreen() {
 
   const loadShow = useCallback(async () => {
     try {
-      const showItems = await getShowEpisodes(id);
+      const resolved = await resolveShowById(id);
+      if (!resolved) {
+        setError("Show not found");
+        return;
+      }
 
-      if (showItems.length > 0) {
-        setShowTitle(showItems[0].show.title);
-        setEpisodes(showItems.map((item) => item.episode));
+      setResolvedShow(resolved.show);
+      setSource(resolved.source);
+      setShowTitle(resolved.show.title);
+
+      const showItems = await getShowEpisodes(id);
+      setEpisodes(showItems.map((item) => item.episode));
+
+      // Set raw topic keys
+      setRawTopicKeys(
+        Object.keys(resolved.show).filter((key) =>
+          ["topic", "topicId", "topicName", "genre", "category"].includes(key),
+        ),
+      );
+
+      // Load topics for the show
+      const show = resolved.show;
+      if (show.topicIds && show.topicIds.length > 0) {
+        const topicPromises = show.topicIds.map((topicId: string) =>
+          getTopicById(topicId),
+        );
+        const loadedTopics = await Promise.all(topicPromises);
+        const filteredTopics = loadedTopics.filter((t: any) => t !== null);
+        setTopics(filteredTopics);
+        if (filteredTopics.length > 0) {
+          setResolvedTopicId(filteredTopics[0]?.id);
+          setResolvedTopicName(filteredTopics[0]?.name);
+        } else {
+          setResolvedTopicId(undefined);
+          setResolvedTopicName(undefined);
+        }
       } else {
-        setShowTitle(createdShow?.title || "Unknown Show");
-        setEpisodes([]);
+        setTopics([]);
+        setResolvedTopicId(undefined);
+        setResolvedTopicName(undefined);
       }
 
       const computedTargetEpisodeId =
@@ -137,7 +180,7 @@ export default function ShowScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, episodeId, fromContinue, createdShow]);
+  }, [id, episodeId, fromContinue]);
 
   useEffect(() => {
     loadShow();
@@ -150,6 +193,16 @@ export default function ShowScreen() {
       loadShow();
     }, [loadShow]),
   );
+
+  useEffect(() => {
+    console.log("[ShowHubDiagnostics]", {
+      id,
+      source,
+      topicId: resolvedTopicId,
+      topicName: resolvedTopicName,
+      showKeys: Object.keys(resolvedShow ?? {}),
+    });
+  }, [id, source, resolvedTopicId, resolvedTopicName, resolvedShow]);
 
   useEffect(() => {
     if (
@@ -181,7 +234,41 @@ export default function ShowScreen() {
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">{showTitle}</ThemedText>
         <ThemedText>Show ID: {id}</ThemedText>
+        {__DEV__ && (
+          <ThemedText style={{ fontSize: 12, color: "gray" }}>
+            DEV: source={source} topicId={resolvedTopicId || "none"} topicName=
+            {resolvedTopicName || "none"} keys=[{rawTopicKeys.join(",")}]
+          </ThemedText>
+        )}
       </ThemedView>
+
+      {topics.length > 0 && (
+        <ThemedView style={styles.topicsContainer}>
+          <ThemedText type="subtitle">Topics</ThemedText>
+          <ThemedView style={styles.topicsChips}>
+            {topics.map((topic) => (
+              <Pressable
+                key={topic.id}
+                style={styles.topicChip}
+                onPress={
+                  topic.id
+                    ? () =>
+                        router.push({
+                          pathname: "/topic/[id]",
+                          params: { id: topic.id },
+                        })
+                    : undefined
+                }
+              >
+                <ThemedText style={styles.topicChipText}>
+                  {topic.name}
+                  {!topic.id ? " (missing topic id)" : ""}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </ThemedView>
+        </ThemedView>
+      )}
 
       <Pressable
         style={styles.createEpisodeButton}
@@ -196,6 +283,27 @@ export default function ShowScreen() {
 
       <Pressable style={styles.saveButton} onPress={() => toggleShow(id)}>
         <ThemedText>{isShowSaved(id) ? "Saved ✓" : "Save"}</ThemedText>
+      </Pressable>
+
+      <Pressable
+        style={styles.followButton}
+        onPress={() => toggleFollowShow(id)}
+      >
+        <ThemedText>{isShowFollowed(id) ? "Following" : "Follow"}</ThemedText>
+      </Pressable>
+
+      <Pressable
+        style={styles.writersRoomButton}
+        onPress={() =>
+          id &&
+          router.push({
+            pathname: "/writers-room/[showId]",
+            params: { showId: id },
+          })
+        }
+      >
+        <ThemedText>Writers Room</ThemedText>
+        <ThemedText>Manage collaborators</ThemedText>
       </Pressable>
 
       {fromSpecial && (
@@ -337,10 +445,24 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     alignSelf: "flex-start",
   },
+  followButton: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: "rgba(0,0,255,0.1)",
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
   createEpisodeButton: {
     marginTop: 16,
     padding: 12,
     backgroundColor: "rgba(0,255,0,0.1)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  writersRoomButton: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "rgba(255,0,255,0.1)",
     borderRadius: 8,
     alignItems: "center",
   },
@@ -379,5 +501,26 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: "absolute",
+  },
+  topicsContainer: {
+    marginTop: 16,
+  },
+  topicsChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  topicChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0,123,255,0.1)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,123,255,0.3)",
+  },
+  topicChipText: {
+    fontSize: 14,
+    color: "#007bff",
   },
 });

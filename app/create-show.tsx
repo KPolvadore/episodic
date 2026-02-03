@@ -1,18 +1,14 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
+import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { mockTopics } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
-
-const topics = [
-  { id: "topic1", title: "Q&A with Creators" },
-  { id: "topic2", title: "Behind the Scenes" },
-  { id: "topic3", title: "Comedy" },
-] as const;
 
 export default function CreateShowScreen() {
   const { addShow } = useCreatorStore();
@@ -24,10 +20,12 @@ export default function CreateShowScreen() {
   const handleCreateShow = () => {
     if (canCreate) {
       const id = `user-show-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const selectedTopic = mockTopics.find((t) => t.id === selectedTopicId);
       addShow({
         id,
         title: title.trim(),
-        topicId: selectedTopicId,
+        topicId: selectedTopicId || undefined,
+        topicName: selectedTopic?.name || undefined,
       });
       router.push({ pathname: "/create-episode", params: { showId: id } });
     }
@@ -57,7 +55,7 @@ export default function CreateShowScreen() {
 
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Show Title</ThemedText>
-        <TextInput
+        <ThemedTextInput
           style={styles.textInput}
           placeholder="Show title"
           value={title}
@@ -67,13 +65,13 @@ export default function CreateShowScreen() {
 
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Topic</ThemedText>
-        {topics.map((topic) => (
+        {mockTopics.map((topic) => (
           <Pressable
             key={topic.id}
             style={styles.topicRow}
             onPress={() => setSelectedTopicId(topic.id)}
           >
-            <ThemedText>{topic.title}</ThemedText>
+            <ThemedText>{topic.name}</ThemedText>
             <IconSymbol
               size={20}
               color={selectedTopicId === topic.id ? "#007AFF" : "#ccc"}
@@ -122,8 +120,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   textInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
     padding: 8,
     marginTop: 8,
     borderRadius: 4,
