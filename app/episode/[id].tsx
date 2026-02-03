@@ -9,14 +9,18 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
     getFeed,
     getShowEpisodes,
+    getTopicById,
+    resolveShowById,
     type EpisodeWithShow,
 } from "@/src/api/feed.api";
+import { getCreatorStore } from "@/src/state/creator-store";
 
 export default function EpisodeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [episodeItem, setEpisodeItem] = useState<EpisodeWithShow | null>(null);
   const [prevEpisode, setPrevEpisode] = useState<EpisodeWithShow | null>(null);
   const [nextEpisode, setNextEpisode] = useState<EpisodeWithShow | null>(null);
+  const [topics, setTopics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [playerState, setPlayerState] = useState<
@@ -26,10 +30,55 @@ export default function EpisodeScreen() {
   useEffect(() => {
     const loadEpisode = async () => {
       try {
-        const data = await getFeed("new");
-        const found = data.find((item) => item.episode.id === id);
+        // Search all episodes from feeds and published
+        const allEpisodes: EpisodeWithShow[] = [];
+        for (const feedType of [
+          "new",
+          "continue",
+          "library",
+          "newShowsOnly",
+          "local",
+        ] as const) {
+          const feed = await getFeed(feedType);
+          allEpisodes.push(...feed);
+        }
+        // Add published episodes
+        getCreatorStore().publishedEpisodes.forEach((episode) => {
+          const show = getCreatorStore().publishedShows[episode.showId];
+          if (show) {
+            allEpisodes.push({ type: "episode", episode, show });
+          }
+        });
+        // Add local published episodes
+        Object.values(getCreatorStore().localPublishedEpisodesByShowId).forEach(
+          (episodes) => {
+            episodes.forEach((item) => {
+              allEpisodes.push(item);
+            });
+          },
+        );
+
+        const found = allEpisodes.find((item) => item.episode.id === id);
         if (found) {
-          setEpisodeItem(found);
+          // Resolve the show using canonical resolver
+          const resolved = await resolveShowById(found.show.id);
+          const resolvedShow = resolved ? resolved.show : found.show;
+
+          const resolvedItem = { ...found, show: resolvedShow };
+          setEpisodeItem(resolvedItem);
+
+          // Load topics for the show
+          const show = resolvedShow;
+          if (show.topicIds && show.topicIds.length > 0) {
+            const topicPromises = show.topicIds.map((topicId: string) =>
+              getTopicById(topicId),
+            );
+            const loadedTopics = await Promise.all(topicPromises);
+            setTopics(loadedTopics.filter((t: any) => t !== null));
+          } else {
+            setTopics([]);
+          }
+
           // Compute prev and next episodes using canonical list
           const showEpisodes = await getShowEpisodes(found.show.id);
           const currentIndex = showEpisodes.findIndex(
@@ -87,6 +136,29 @@ export default function EpisodeScreen() {
         <>
           <ThemedText type="subtitle">{episodeItem.show.title}</ThemedText>
           <ThemedText>{episodeItem.episode.title}</ThemedText>
+          {topics.length > 0 && (
+            <ThemedView style={styles.topicsContainer}>
+              <ThemedText type="subtitle">Topics</ThemedText>
+              <ThemedView style={styles.topicsChips}>
+                {topics.map((topic) => (
+                  <Pressable
+                    key={topic.id}
+                    style={styles.topicChip}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/topic/[id]",
+                        params: { id: topic.id },
+                      })
+                    }
+                  >
+                    <ThemedText style={styles.topicChipText}>
+                      {topic.name}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </ThemedView>
+            </ThemedView>
+          )}
           {episodeItem.episode.seasonNumber &&
             episodeItem.episode.episodeNumber && (
               <ThemedText style={styles.badge}>
@@ -235,5 +307,26 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: "absolute",
+  },
+  topicsContainer: {
+    marginTop: 16,
+  },
+  topicsChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  topicChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(0,123,255,0.1)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,123,255,0.3)",
+  },
+  topicChipText: {
+    fontSize: 14,
+    color: "#007bff",
   },
 });

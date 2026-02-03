@@ -7,100 +7,53 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
-    getMixedFeed,
-    getShowEpisodes,
-    type EpisodeWithShow,
-    type FeedItem,
+  type EpisodeWithShow,
+  getEpisodesByTopic,
+  getShowsByTopic,
+  getTopicById,
 } from "@/src/api/feed.api";
 import { useLibraryStore } from "@/src/state/library-store";
 
 const TopicScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [specials, setSpecials] = useState<FeedItem[]>([]);
+  const [topic, setTopic] = useState<any>(null);
+  const [attachedShows, setAttachedShows] = useState<any[]>([]);
   const [episodes, setEpisodes] = useState<EpisodeWithShow[]>([]);
-  const [attachedShowIds, setAttachedShowIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const { isTopicSaved, toggleTopic } = useLibraryStore();
 
   useEffect(() => {
-    const loadSpecials = async () => {
+    const loadTopicData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const feed = await getMixedFeed("new");
-        const matchingSpecials = feed.filter((item) => {
-          if (item.type === "special") {
-            const topics = item.attachedTopicIds ?? [];
-            return topics.includes(id);
-          }
-          return false;
-        });
-        setSpecials(matchingSpecials);
-        const showIds = Array.from(
-          new Set(
-            matchingSpecials
-              .filter(
-                (
-                  s,
-                ): s is FeedItem & {
-                  type: "special";
-                  attachedShowIds: string[];
-                } => s.type === "special" && !!s.attachedShowIds,
-              )
-              .flatMap((s) => s.attachedShowIds),
-          ),
+        const topicData = await getTopicById(id);
+        if (!topicData) {
+          setError("Topic not found");
+          return;
+        }
+        setTopic(topicData);
+
+        const shows = await getShowsByTopic(id);
+        setAttachedShows(shows);
+
+        const topicEpisodes = await getEpisodesByTopic(id);
+        const dedupedEpisodes = Array.from(
+          new Map(topicEpisodes.map((e) => [e.episode.id, e])).values(),
         );
-        setAttachedShowIds(showIds);
+        setEpisodes(dedupedEpisodes);
       } catch {
-        setError("Failed to load specials");
+        setError("Failed to load topic data");
       } finally {
         setLoading(false);
       }
     };
     if (id) {
-      loadSpecials();
+      loadTopicData();
     }
   }, [id]);
-
-  useEffect(() => {
-    const loadEpisodes = async () => {
-      if (attachedShowIds.length === 0) {
-        setEpisodes([]);
-        return;
-      }
-      try {
-        const allEpisodes: EpisodeWithShow[] = [];
-        for (const showId of attachedShowIds) {
-          const showEpisodes = await getShowEpisodes(showId);
-          allEpisodes.push(...showEpisodes);
-        }
-        const episodeMap = new Map<string, EpisodeWithShow>();
-        allEpisodes.forEach((item) => {
-          if (!episodeMap.has(item.episode.id)) {
-            episodeMap.set(item.episode.id, item);
-          }
-        });
-        const deduped = Array.from(episodeMap.values());
-        deduped.sort((a, b) => {
-          if (a.show.title !== b.show.title) {
-            return a.show.title.localeCompare(b.show.title);
-          }
-          const aSeason = a.episode.seasonNumber ?? 1;
-          const bSeason = b.episode.seasonNumber ?? 1;
-          if (aSeason !== bSeason) return aSeason - bSeason;
-          return (
-            (a.episode.episodeNumber ?? 0) - (b.episode.episodeNumber ?? 0)
-          );
-        });
-        setEpisodes(deduped);
-      } catch {
-        // Ignore errors for episodes
-      }
-    };
-    loadEpisodes();
-  }, [attachedShowIds]);
 
   if (loading) {
     return (
@@ -150,36 +103,30 @@ const TopicScreen = () => {
         />
       }
     >
-      <ThemedText type="title">Topic</ThemedText>
-
-      <Pressable style={styles.saveButton} onPress={() => toggleTopic(id)}>
-        <ThemedText>{isTopicSaved(id) ? "Saved ✓" : "Save"}</ThemedText>
-      </Pressable>
-      <ThemedText>Topic ID: {id}</ThemedText>
+      <ThemedView style={styles.titleContainer}>
+        <ThemedText type="title">{topic?.name || "Topic"}</ThemedText>
+        <Pressable style={styles.saveButton} onPress={() => toggleTopic(id)}>
+          <ThemedText>{isTopicSaved(id) ? "Saved ✓" : "Save"}</ThemedText>
+        </Pressable>
+        <ThemedText>Topic ID: {id}</ThemedText>
+      </ThemedView>
       {(() => {
-        const showTitles = new Map(
-          episodes
-            .filter((e) => e.type === "episode")
-            .map((e) => [e.episode.showId, e.show.title]),
-        );
         return (
           <ThemedView style={styles.showsContainer}>
             <ThemedText type="subtitle">Attached Shows</ThemedText>
-            {attachedShowIds.length > 0 ? (
-              attachedShowIds.map((showId) => (
+            {attachedShows.length > 0 ? (
+              attachedShows.map((show) => (
                 <Pressable
-                  key={showId}
+                  key={show.id}
                   style={styles.showItem}
                   onPress={() =>
                     router.push({
                       pathname: "/show/[id]",
-                      params: { id: showId },
+                      params: { id: show.id },
                     })
                   }
                 >
-                  <ThemedText>
-                    {showTitles.get(showId) || `Show: ${showId}`}
-                  </ThemedText>
+                  <ThemedText>{show.title}</ThemedText>
                 </Pressable>
               ))
             ) : (
@@ -188,25 +135,9 @@ const TopicScreen = () => {
           </ThemedView>
         );
       })()}
-      <ThemedView style={styles.specialsContainer}>
-        {specials.map((special) => {
-          if (special.type === "special") {
-            return (
-              <Pressable
-                key={special.specialId}
-                style={styles.specialItem}
-                onPress={() => router.push(`/special/${special.specialId}`)}
-              >
-                <ThemedText type="subtitle">{special.title}</ThemedText>
-                <ThemedText>{special.kind}</ThemedText>
-              </Pressable>
-            );
-          }
-          return null;
-        })}
-      </ThemedView>
+
       <ThemedView style={styles.episodesContainer}>
-        <ThemedText type="subtitle">Episodes in this Topic</ThemedText>
+        <ThemedText type="subtitle">Episodes</ThemedText>
         {episodes.length > 0 ? (
           episodes.map((episode) => {
             const episodeId = episode.episode.id;
@@ -229,7 +160,7 @@ const TopicScreen = () => {
             );
           })
         ) : (
-          <ThemedText>No episodes found for attached shows</ThemedText>
+          <ThemedText>No episodes found</ThemedText>
         )}
       </ThemedView>
     </ParallaxScrollView>
@@ -245,6 +176,11 @@ const styles = StyleSheet.create({
     left: -35,
     position: "absolute",
   },
+  titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   showsContainer: {
     marginTop: 16,
   },
@@ -253,16 +189,6 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 4,
-  },
-  specialsContainer: {
-    marginTop: 16,
-  },
-  specialItem: {
-    gap: 4,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 8,
   },
   episodesContainer: {
     marginTop: 16,

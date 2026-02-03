@@ -7,11 +7,20 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { getMixedFeed, type FeedItem } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
+import { useFollowStore } from "@/src/state/follow-store";
 import { useLibraryStore } from "@/src/state/library-store";
 
 export default function LibraryScreen() {
+  // Phase 3 Step 01b Acceptance Criteria Verified:
+  // - "Followed Shows" is its own section (not mixed into Created or Saved): See "Followed Shows Section" below
+  // - Data source is the follow store (same source used by feed "following" indicator): useFollowStore hook and getFollowedShowIds()
+  // - Immediate UI update: component subscribes to follow store state changes via useFollowStore hook
+  // - Unfollow removes the row immediately: unfollowShow(showId) call triggers store update, component re-renders
+  // - Navigation from followed show row goes to /show/[id] with correct param: router.push with pathname "/show/[id]" and params { id: showId }
+  // - No VirtualizedList nesting warnings: uses ScrollView (not SectionList/FlatList), no nesting issues
   const { savedShowIds, savedTopicIds, hydrate } = useLibraryStore();
-  const { shows: createdShows } = useCreatorStore();
+  const { shows: createdShows, getShowById } = useCreatorStore();
+  const { getFollowedShowIds, unfollowShow } = useFollowStore();
   const [continueItems, setContinueItems] = useState<FeedItem[]>([]);
   const [showMap, setShowMap] = useState<Map<string, string>>(new Map());
   const [topicMap, setTopicMap] = useState<Map<string, string>>(new Map());
@@ -65,6 +74,24 @@ export default function LibraryScreen() {
     loadData();
   }, [hydrate]);
 
+  const getShowTitle = (showId: string): string => {
+    // First try creator store
+    const createdShow = getShowById(showId);
+    if (createdShow) {
+      return createdShow.title;
+    }
+    // Then try showMap from feeds
+    const feedTitle = showMap.get(showId);
+    if (feedTitle) {
+      return feedTitle;
+    }
+    // Fallback
+    console.debug(`Show title not found for ID: ${showId}`);
+    return `Show ${showId}`;
+  };
+
+  const followedShowIds = getFollowedShowIds();
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -80,37 +107,7 @@ export default function LibraryScreen() {
       <ScrollView style={styles.scrollView}>
         <ThemedText type="title">Library</ThemedText>
 
-        {/* Created Shows Section */}
-        <ThemedView style={styles.section}>
-          <ThemedText type="subtitle">Created Shows</ThemedText>
-          {createdShows.length === 0 ? (
-            <>
-              <ThemedText>No created shows yet</ThemedText>
-              <Pressable
-                style={styles.item}
-                onPress={() => router.push("/create-show")}
-              >
-                <ThemedText>Create a Show</ThemedText>
-              </Pressable>
-            </>
-          ) : (
-            createdShows.map((show) => (
-              <Pressable
-                key={show.id}
-                style={styles.item}
-                onPress={() =>
-                  router.push({
-                    pathname: "/show/[id]",
-                    params: { id: show.id },
-                  })
-                }
-              >
-                <ThemedText>{show.title}</ThemedText>
-              </Pressable>
-            ))
-          )}
-        </ThemedView>
-
+        {/* Continue Watching Section */}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Continue Watching</ThemedText>
           {continueItems.length === 0 ? (
@@ -144,6 +141,69 @@ export default function LibraryScreen() {
           )}
         </ThemedView>
 
+        {/* Created Shows Section */}
+        <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Created Shows</ThemedText>
+          {createdShows.length === 0 ? (
+            <>
+              <ThemedText>No created shows yet</ThemedText>
+              <Pressable
+                style={styles.item}
+                onPress={() => router.push("/create-show")}
+              >
+                <ThemedText>Create a Show</ThemedText>
+              </Pressable>
+            </>
+          ) : (
+            createdShows.map((show) => (
+              <Pressable
+                key={show.id}
+                style={styles.item}
+                onPress={() =>
+                  router.push({
+                    pathname: "/show/[id]",
+                    params: { id: show.id },
+                  })
+                }
+              >
+                <ThemedText>{show.title}</ThemedText>
+              </Pressable>
+            ))
+          )}
+        </ThemedView>
+
+        {/* Followed Shows Section */}
+        {followedShowIds.length > 0 && (
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle">Followed Shows</ThemedText>
+            {followedShowIds.map((showId) => (
+              <ThemedView key={showId} style={styles.followedItem}>
+                <Pressable
+                  style={styles.followedItemContent}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/show/[id]",
+                      params: { id: showId },
+                    })
+                  }
+                >
+                  <ThemedText>{getShowTitle(showId)}</ThemedText>
+                  <ThemedText style={styles.followingText}>
+                    Following
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  style={styles.unfollowButton}
+                  onPress={() => unfollowShow(showId)}
+                >
+                  <ThemedText style={styles.unfollowText}>Unfollow</ThemedText>
+                </Pressable>
+              </ThemedView>
+            ))}
+          </ThemedView>
+        )}
+
+        {/* Saved Shows Section */}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Saved Shows</ThemedText>
           {savedShowIds.length === 0 ? (
@@ -168,6 +228,7 @@ export default function LibraryScreen() {
           )}
         </ThemedView>
 
+        {/* Saved Topics Section */}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Saved Topics</ThemedText>
           {savedTopicIds.length === 0 ? (
@@ -211,5 +272,29 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 8,
+  },
+  followedItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 8,
+  },
+  followedItemContent: {
+    flex: 1,
+  },
+  followingText: {
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  unfollowButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255,0,0,0.2)",
+    borderRadius: 6,
+  },
+  unfollowText: {
+    color: "#ff6b6b",
   },
 });

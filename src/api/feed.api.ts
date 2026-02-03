@@ -1,12 +1,15 @@
 // Stable feed API boundary for the Episodic App
 
-import { useCreatorStore } from "../state/creator-store";
+import { getCreatorStore, useCreatorStore } from "../state/creator-store";
 
 // Domain types (minimal for this boundary)
 export interface Show {
   id: string;
   title: string;
   creatorId: string;
+  topicIds?: string[];
+  topicName?: string;
+  createdAtIso?: string;
 }
 
 export interface Episode {
@@ -20,6 +23,7 @@ export interface Episode {
   createdAt: Date;
   publishedAt?: Date;
   trailerForEpisodeNumber?: number;
+  topicIds?: string[];
 }
 
 export interface EpisodeWithShow {
@@ -41,6 +45,12 @@ export interface Special {
   // Enforce: at least one of attachedShowIds or attachedTopicIds must be non-empty
 }
 
+export interface Topic {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
 export type FeedItem = EpisodeWithShow | Special;
 
 // Feed types
@@ -50,11 +60,6 @@ export type FeedType =
   | "library"
   | "newShowsOnly"
   | "local";
-
-// In-memory stores for published content
-const publishedShows = new Map<string, Show>();
-const publishedEpisodes: PublishedEpisode[] = [];
-const localPublishedEpisodesByShowId: Record<string, EpisodeWithShow[]> = {};
 
 export type PublishEpisodeInput = {
   showId: string;
@@ -77,21 +82,29 @@ export async function publishEpisode(
   const existing = await getShowById(input.showId);
   const creatorShow = useCreatorStore.getState().getShowById(input.showId);
   if (existing) {
-    show = { ...existing, creatorId: input.creatorId ?? "creator-local" };
+    show = {
+      ...existing,
+      creatorId: input.creatorId ?? "creator-local",
+      topicIds: creatorShow?.topicIds || [],
+      topicName: creatorShow?.topicName,
+    };
   } else {
     show = {
       id: input.showId,
       title: creatorShow?.title ?? input.showTitle ?? "New Show",
       creatorId: input.creatorId ?? "creator-local",
+      topicIds: creatorShow?.topicIds || [],
+      topicName: creatorShow?.topicName,
     };
   }
-  publishedShows.set(show.id, show);
 
   // Create episode
   const isTrailer = input.episodeType === "trailer";
   const episodeNumber = isTrailer ? 0 : (input.episodeNumber ?? 1);
   const episodeId = `pub-${input.showId}-${episodeNumber}-${input.seasonNumber ?? 1}`;
-  const existingEpisode = publishedEpisodes.find((ep) => ep.id === episodeId);
+  const existingEpisode = getCreatorStore().publishedEpisodes.find(
+    (ep) => ep.id === episodeId,
+  );
   if (existingEpisode) {
     return {
       type: "episode",
@@ -120,10 +133,8 @@ export async function publishEpisode(
     episode,
     show,
   };
-  if (!localPublishedEpisodesByShowId[input.showId]) {
-    localPublishedEpisodesByShowId[input.showId] = [];
-  }
-  localPublishedEpisodesByShowId[input.showId].push(episodeWithShow);
+  getCreatorStore().addPublishedEpisode(episode, show);
+  getCreatorStore().addLocalPublishedEpisode(input.showId, episodeWithShow);
 
   return episodeWithShow;
 }
@@ -163,8 +174,18 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
   switch (feedType) {
     case "new":
       mockShows = [
-        { id: "show1", title: "New Adventures", creatorId: "creator1" },
-        { id: "show2", title: "Fresh Comedy", creatorId: "creator2" },
+        {
+          id: "show1",
+          title: "New Adventures",
+          creatorId: "creator1",
+          topicIds: ["topic1"],
+        },
+        {
+          id: "show2",
+          title: "Fresh Comedy",
+          creatorId: "creator2",
+          topicIds: ["topic2"],
+        },
       ];
       mockEpisodes = [
         {
@@ -177,6 +198,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 300,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic1"],
         },
         {
           id: "ep3",
@@ -188,6 +210,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic1"],
         },
         {
           id: "ep2",
@@ -198,13 +221,24 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 250,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic2"],
         },
       ];
       break;
     case "continue":
       mockShows = [
-        { id: "show3", title: "Ongoing Series", creatorId: "creator3" },
-        { id: "show4", title: "Continuing Story", creatorId: "creator4" },
+        {
+          id: "show3",
+          title: "Ongoing Series",
+          creatorId: "creator3",
+          topicIds: ["topic3"],
+        },
+        {
+          id: "show4",
+          title: "Continuing Story",
+          creatorId: "creator4",
+          topicIds: ["topic1"],
+        },
       ];
       mockEpisodes = [
         {
@@ -217,6 +251,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-2",
@@ -228,6 +263,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-3",
@@ -239,6 +275,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-4",
@@ -250,6 +287,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-5",
@@ -261,6 +299,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-6",
@@ -272,6 +311,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-7",
@@ -283,6 +323,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-8",
@@ -294,6 +335,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-9",
@@ -305,6 +347,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-10",
@@ -316,6 +359,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-11",
@@ -327,6 +371,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-12",
@@ -401,6 +446,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-4",
@@ -412,6 +458,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-5",
@@ -423,6 +470,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-6",
@@ -434,6 +482,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-7",
@@ -445,6 +494,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-8",
@@ -456,6 +506,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-9",
@@ -467,6 +518,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-10",
@@ -478,6 +530,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
           duration: 280,
           createdAt: new Date(),
           publishedAt: new Date(),
+          topicIds: ["topic3"],
         },
         {
           id: "ep3-11",
@@ -561,7 +614,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
   // Include locally published episodes in new and local feeds
   if (feedType === "new" || feedType === "local") {
     const allLocalEpisodes = Object.values(
-      localPublishedEpisodesByShowId,
+      getCreatorStore().localPublishedEpisodesByShowId,
     ).flat();
     result.push(...allLocalEpisodes);
   }
@@ -571,7 +624,7 @@ export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
 
 // Corrected helper to check if a show is eligible for public feeds
 function isShowEligibleForPublicFeeds(showId: string): boolean {
-  const publishedEpisodesForShow = publishedEpisodes.filter(
+  const publishedEpisodesForShow = getCreatorStore().publishedEpisodes.filter(
     (ep: PublishedEpisode) => ep.showId === showId,
   );
   const hasPublishedTrailer = publishedEpisodesForShow.some(
@@ -625,13 +678,79 @@ export async function getShowById(
     if (show) return { id: show.id, title: show.title };
   }
   // Check published shows
-  const publishedShow = publishedShows.get(showId);
+  const publishedShow = getCreatorStore().publishedShows[showId];
   if (publishedShow)
     return { id: publishedShow.id, title: publishedShow.title };
   // Check creator store
   const creatorShow = useCreatorStore.getState().getShowById(showId);
   if (creatorShow) return { id: creatorShow.id, title: creatorShow.title };
   return null;
+}
+
+export async function resolveShowById(
+  showId: string,
+): Promise<{ show: Show; source: string; debug: any } | null> {
+  const creatorShow = useCreatorStore.getState().getShowById(showId);
+  let curatedShow: Show | null = null;
+  // Check published first
+  curatedShow = getCreatorStore().publishedShows[showId] || null;
+  if (!curatedShow) {
+    // Check feeds
+    const feeds: FeedType[] = [
+      "new",
+      "continue",
+      "library",
+      "newShowsOnly",
+      "local",
+    ];
+    for (const feed of feeds) {
+      const data = await getFeed(feed);
+      const item = data.find((i) => i.show.id === showId);
+      if (item) {
+        curatedShow = item.show;
+        break;
+      }
+    }
+  }
+  if (creatorShow && curatedShow) {
+    const merged: Show = {
+      ...curatedShow,
+      ...creatorShow,
+      topicIds: creatorShow.topicIds || curatedShow.topicIds || [],
+      topicName: creatorShow.topicName || curatedShow.topicName,
+    };
+    return {
+      show: merged,
+      source: "merged",
+      debug: {
+        hasCreator: true,
+        hasCurated: true,
+        creatorTopicId: creatorShow.topicIds?.[0],
+        curatedTopicIds: curatedShow.topicIds,
+      },
+    };
+  } else if (creatorShow) {
+    const show: Show = {
+      id: creatorShow.id,
+      title: creatorShow.title,
+      creatorId: "creator",
+      topicIds: creatorShow.topicIds || [],
+      topicName: creatorShow.topicName,
+    };
+    return {
+      show,
+      source: "creator",
+      debug: { hasCreator: true, hasCurated: false },
+    };
+  } else if (curatedShow) {
+    return {
+      show: curatedShow,
+      source: "curated",
+      debug: { hasCreator: false, hasCurated: true },
+    };
+  } else {
+    return null;
+  }
 }
 
 // Canonical show episode list is normalized + sorted
@@ -646,13 +765,14 @@ export async function getShowEpisodes(
   ]);
   const allData = [...newData, ...libraryData, ...continueData];
   // Add published episodes for this show
-  const publishedForShow = publishedEpisodes
-    .filter((ep) => ep.showId === showId)
+  const publishedForShow = getCreatorStore()
+    .publishedEpisodes.filter((episode) => episode.showId === showId)
     .map((episode) => {
-      const show = publishedShows.get(episode.showId)!;
+      const show = getCreatorStore().publishedShows[episode.showId]!;
       return { type: "episode" as const, episode, show };
     });
-  const localForShow = localPublishedEpisodesByShowId[showId] || [];
+  const localForShow =
+    getCreatorStore().localPublishedEpisodesByShowId[showId] || [];
   const allDataWithPublished = [
     ...allData,
     ...publishedForShow,
@@ -692,6 +812,95 @@ export async function getShowEpisodes(
   });
 
   return episodes;
+}
+
+// Topic helpers
+export const mockTopics: Topic[] = [
+  { id: "topic1", name: "Adventure", slug: "adventure" },
+  { id: "topic2", name: "Comedy", slug: "comedy" },
+  { id: "topic3", name: "Drama", slug: "drama" },
+];
+
+export function getTopicById(topicId: string): Topic | undefined {
+  return mockTopics.find((topic) => topic.id === topicId);
+}
+
+export async function getShowsByTopic(topicId: string): Promise<Show[]> {
+  const showIds = new Set<string>();
+  // Collect showIds from feeds
+  for (const feedType of [
+    "new",
+    "continue",
+    "library",
+    "newShowsOnly",
+    "local",
+  ] as FeedType[]) {
+    const feed = await getFeed(feedType);
+    feed.forEach((item) => showIds.add(item.show.id));
+  }
+  // Add published showIds
+  Object.keys(getCreatorStore().publishedShows).forEach((id) =>
+    showIds.add(id),
+  );
+  // Add creator showIds
+  useCreatorStore.getState().shows.forEach((s) => showIds.add(s.id));
+  // Resolve each
+  const resolvedShows: Show[] = [];
+  for (const id of showIds) {
+    const resolved = await resolveShowById(id);
+    if (resolved) resolvedShows.push(resolved.show);
+  }
+  return resolvedShows.filter((show) => show.topicIds?.includes(topicId));
+}
+
+export async function getEpisodesByTopic(
+  topicId: string,
+): Promise<EpisodeWithShow[]> {
+  // Get all episodes from feeds
+  const allEpisodes: EpisodeWithShow[] = [];
+  for (const feedType of [
+    "new",
+    "continue",
+    "library",
+    "newShowsOnly",
+    "local",
+  ] as FeedType[]) {
+    const feed = await getFeed(feedType);
+    allEpisodes.push(...feed);
+  }
+  // Also include published episodes
+  getCreatorStore().publishedEpisodes.forEach((episode) => {
+    const show = getCreatorStore().publishedShows[episode.showId];
+    if (show) {
+      allEpisodes.push({ type: "episode", episode, show });
+    }
+  });
+  // Include creator episodes
+  const creatorShows = useCreatorStore
+    .getState()
+    .shows.filter((s) => s.topicIds?.includes(topicId));
+  creatorShows.forEach((show) => {
+    const episodes =
+      getCreatorStore().localPublishedEpisodesByShowId[show.id] || [];
+    episodes.forEach((item) => {
+      allEpisodes.push({
+        type: "episode",
+        episode: item.episode,
+        show: {
+          id: show.id,
+          title: show.title,
+          creatorId: "creator",
+          topicIds: show.topicIds || [],
+          topicName: show.topicName,
+        },
+      });
+    });
+  });
+  return allEpisodes.filter(
+    (item) =>
+      item.episode.topicIds?.includes(topicId) ||
+      item.show.topicIds?.includes(topicId),
+  );
 }
 
 // Define PublishedEpisode type

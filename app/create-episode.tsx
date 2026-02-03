@@ -1,27 +1,28 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  AppState,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Switch,
-  TextInput,
-} from "react-native";
-
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
-  getShowEpisodes,
-  publishEpisode,
-  PublishEpisodeInput,
+    getShowEpisodes,
+    publishEpisode,
+    PublishEpisodeInput,
 } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
+import { useWritersRoomStore } from "@/src/state/writers-room-store";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    Alert,
+    AppState,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Switch,
+    TextInput,
+} from "react-native";
 
 const hookTemplates = [
   { id: "cliffhanger", label: "Cliffhanger" },
@@ -43,7 +44,14 @@ export default function CreateEpisodeScreen() {
     getDraftEpisodeById,
     getDraftEpisodesByShowId,
     removeDraftEpisode,
+    shareDraft,
+    unshareDraft,
   } = useCreatorStore();
+  const activeDraft = useCreatorStore((s) =>
+    draftEpisodeId ? s.getDraftEpisodeById(draftEpisodeId) : undefined,
+  );
+  const { roleByShowId, seedShow } = useWritersRoomStore();
+  const myRole = roleByShowId[selectedShowId] || "viewer";
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "failed" | "success"
   >("idle");
@@ -87,6 +95,9 @@ export default function CreateEpisodeScreen() {
   const [currentDraft, setCurrentDraft] = useState<any>(null);
 
   useEffect(() => {
+    if (selectedShowId) {
+      seedShow(selectedShowId);
+    }
     const loadPriorEpisodes = async () => {
       if (selectedShowId) {
         try {
@@ -107,7 +118,7 @@ export default function CreateEpisodeScreen() {
       }
     };
     loadPriorEpisodes();
-  }, [selectedShowId]);
+  }, [selectedShowId, seedShow]);
 
   useEffect(() => {
     if (draftEpisodeId) {
@@ -219,6 +230,11 @@ export default function CreateEpisodeScreen() {
               {currentDraft.episodeNumber}
             </ThemedText>
           )}
+          {activeDraft && activeDraft.sharedWithWritersRoom && (
+            <ThemedView style={styles.sharedBadge}>
+              <ThemedText style={styles.sharedBadgeText}>Shared</ThemedText>
+            </ThemedView>
+          )}
         </ThemedView>
 
         <ThemedView style={styles.section}>
@@ -233,6 +249,37 @@ export default function CreateEpisodeScreen() {
             Real permission prompts added in Phase 2 Step 03.
           </ThemedText>
         </ThemedView>
+
+        {activeDraft && (myRole === "owner" || myRole === "editor") && (
+          <ThemedView style={styles.section}>
+            <ThemedText type="subtitle">Writers Room</ThemedText>
+            <Pressable
+              style={styles.shareButton}
+              onPress={() => {
+                if (activeDraft.sharedWithWritersRoom) {
+                  unshareDraft(selectedShowId, activeDraft.id);
+                  Alert.alert("Unshared from Writers Room");
+                } else {
+                  shareDraft(selectedShowId, activeDraft.id);
+                  Alert.alert("Shared", "Draft shared to Writer’s Room", [
+                    { text: "Stay here" },
+                    {
+                      text: "Go to Writer’s Room",
+                      onPress: () =>
+                        router.push(`/writers-room/${selectedShowId}`),
+                    },
+                  ]);
+                }
+              }}
+            >
+              <ThemedText>
+                {activeDraft.sharedWithWritersRoom
+                  ? "Unshare from Writers Room"
+                  : "Share with Writers Room"}
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+        )}
 
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Recorder</ThemedText>
@@ -931,5 +978,25 @@ const styles = StyleSheet.create({
     color: "#FFD700",
     fontWeight: "bold",
     textAlign: "center",
+  },
+  sharedBadge: {
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
+  sharedBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  shareButton: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: "rgba(0,0,255,0.1)",
+    borderRadius: 8,
+    alignItems: "center",
   },
 });
