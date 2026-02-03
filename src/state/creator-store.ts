@@ -21,12 +21,19 @@ interface DraftEpisode {
   episodeNumber: number;
   createdAtIso: string;
   updatedAtIso: string;
+  scenes?: DraftScene[];
   hookTemplateId?: string;
   nextDropIso?: string | null;
   previouslyOnEpisodeIds?: string[];
   episodeType?: "episode" | "trailer";
   sharedWithWritersRoom?: boolean;
   sharedAt?: string;
+}
+
+interface DraftScene {
+  id: string;
+  title: string;
+  createdAtIso: string;
 }
 
 interface PublishedEpisode {

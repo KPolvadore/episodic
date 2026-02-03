@@ -1929,6 +1929,7 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - [x] Phase 3 — Step 03: Topics/hashtags v1 (tag shows/episodes; topic discovery improves)
 - [x] Phase 3 — Step 04: Writers Room v1 (invite co-creator; roles: owner/editor/viewer)
 - [x] Phase 3 — Step 05: Draft sharing v1 (share draft with writers room)
+- [x] Phase 3 — Step 06: Stitch scenes v1 (ordered list of clips; render order)
 
 ---
 

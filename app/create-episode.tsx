@@ -11,7 +11,7 @@ import {
 import { useCreatorStore } from "@/src/state/creator-store";
 import { useWritersRoomStore } from "@/src/state/writers-room-store";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
@@ -30,6 +30,12 @@ const hookTemplates = [
   { id: "recap", label: "Quick recap" },
   { id: "twist", label: "Plot twist tease" },
 ] as const;
+
+type DraftScene = {
+  id: string;
+  title: string;
+  createdAtIso: string;
+};
 
 export default function CreateEpisodeScreen() {
   const colorScheme = useColorScheme();
@@ -67,18 +73,13 @@ export default function CreateEpisodeScreen() {
   );
   const [titleError, setTitleError] = useState<string | null>(null);
   const [showIdError, setShowIdError] = useState<string | null>(null);
-  const [draftMeta, setDraftMeta] = useState<{
-    title: string;
-    showId: string;
-    hookTemplateId: string;
-    nextDropIso: string | null;
-    previouslyOnEpisodeIds: string[];
-  } | null>(null);
   const [nextDropDate, setNextDropDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [previouslyOnEpisodeIds, setPreviouslyOnEpisodeIds] = useState<
     string[]
   >([]);
+  const [scenes, setScenes] = useState<DraftScene[]>([]);
+  const [newSceneTitle, setNewSceneTitle] = useState("");
   const [priorEpisodes, setPriorEpisodes] = useState<
     { id: string; title: string; seasonNumber: number; episodeNumber: number }[]
   >([]);
@@ -88,11 +89,179 @@ export default function CreateEpisodeScreen() {
     show: any;
   } | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const [draftCreated, setDraftCreated] = useState<{
-    episodeNumber: number;
-    showId: string;
-  } | null>(null);
   const [currentDraft, setCurrentDraft] = useState<any>(null);
+  const [autoSaveVisible, setAutoSaveVisible] = useState(false);
+  const saveInFlightRef = useRef(false);
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const autoCreateTimerRef = useRef<number | null>(null);
+
+  const showAutoSaved = useCallback(() => {
+    setAutoSaveVisible(true);
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      setAutoSaveVisible(false);
+      autoSaveTimerRef.current = null;
+    }, 2500);
+  }, []);
+
+  const getNextEpisodeNumber = useCallback(
+    async (showId: string, seasonNumber: number) => {
+      const existingPublished = await getShowEpisodes(showId);
+      const seasonEpisodes = existingPublished.filter(
+        (item) =>
+          item.episode.seasonNumber === seasonNumber &&
+          (item.episode as any).kind !== "trailer",
+      );
+      const publishedMax =
+        seasonEpisodes.length > 0
+          ? Math.max(
+              ...seasonEpisodes.map((item) => item.episode.episodeNumber),
+            )
+          : 0;
+      const existingDrafts = getDraftEpisodesByShowId(showId);
+      const seasonDrafts = existingDrafts.filter(
+        (d) => d.seasonNumber === seasonNumber && d.episodeType !== "trailer",
+      );
+      const draftMax =
+        seasonDrafts.length > 0
+          ? Math.max(...seasonDrafts.map((d) => d.episodeNumber))
+          : 0;
+      return Math.max(publishedMax, draftMax) + 1;
+    },
+    [getDraftEpisodesByShowId],
+  );
+
+  const createDraftFromState = useCallback(async () => {
+    if (saveInFlightRef.current || currentDraft) return;
+    if (!selectedShowId) return;
+    const trimmedTitle = episodeTitle.trim();
+    if (!trimmedTitle) return;
+
+    saveInFlightRef.current = true;
+    try {
+      const nextEpisodeNumber = await getNextEpisodeNumber(selectedShowId, 1);
+      const draftId = `draft-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+      addDraftEpisode({
+        id: draftId,
+        showId: selectedShowId,
+        title: trimmedTitle,
+        seasonNumber: 1,
+        episodeNumber: nextEpisodeNumber,
+        hookTemplateId: selectedHookTemplateId,
+        nextDropIso: nextDropDate
+          ? nextDropDate.toISOString().slice(0, 10)
+          : null,
+        previouslyOnEpisodeIds,
+        episodeType,
+        scenes,
+      });
+      const createdDraft = getDraftEpisodeById(draftId);
+      setCurrentDraft(
+        createdDraft || {
+          id: draftId,
+          showId: selectedShowId,
+          title: trimmedTitle,
+          seasonNumber: 1,
+          episodeNumber: nextEpisodeNumber,
+          createdAtIso: new Date().toISOString(),
+          updatedAtIso: new Date().toISOString(),
+        },
+      );
+      showAutoSaved();
+    } finally {
+      saveInFlightRef.current = false;
+    }
+  }, [
+    addDraftEpisode,
+    currentDraft,
+    episodeTitle,
+    episodeType,
+    getDraftEpisodeById,
+    getNextEpisodeNumber,
+    nextDropDate,
+    previouslyOnEpisodeIds,
+    scenes,
+    selectedHookTemplateId,
+    selectedShowId,
+    showAutoSaved,
+  ]);
+
+  const maybeAutoSaveDraft = useCallback(async () => {
+    if (saveInFlightRef.current) return;
+    if (!selectedShowId) return;
+    const trimmedTitle = episodeTitle.trim();
+    if (!trimmedTitle && !currentDraft) return;
+
+    if (currentDraft) {
+      const titleToSave = trimmedTitle || currentDraft.title;
+      updateDraftEpisode(currentDraft.id, {
+        title: titleToSave,
+        hookTemplateId: selectedHookTemplateId,
+        nextDropIso: nextDropDate
+          ? nextDropDate.toISOString().slice(0, 10)
+          : null,
+        previouslyOnEpisodeIds,
+        episodeType,
+        scenes,
+      });
+      showAutoSaved();
+      return;
+    }
+
+    await createDraftFromState();
+  }, [
+    createDraftFromState,
+    currentDraft,
+    episodeTitle,
+    episodeType,
+    nextDropDate,
+    previouslyOnEpisodeIds,
+    scenes,
+    selectedHookTemplateId,
+    selectedShowId,
+    showAutoSaved,
+    updateDraftEpisode,
+  ]);
+
+  useEffect(() => {
+    if (currentDraft || !selectedShowId || !episodeTitle.trim()) return;
+    if (autoCreateTimerRef.current) {
+      clearTimeout(autoCreateTimerRef.current);
+    }
+    autoCreateTimerRef.current = setTimeout(() => {
+      autoCreateTimerRef.current = null;
+      void createDraftFromState();
+    }, 600);
+    return () => {
+      if (autoCreateTimerRef.current) {
+        clearTimeout(autoCreateTimerRef.current);
+        autoCreateTimerRef.current = null;
+      }
+    };
+  }, [createDraftFromState, currentDraft, episodeTitle, selectedShowId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        void maybeAutoSaveDraft();
+      };
+    }, [maybeAutoSaveDraft]),
+  );
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      if (autoCreateTimerRef.current) {
+        clearTimeout(autoCreateTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedShowId) {
@@ -130,6 +299,7 @@ export default function CreateEpisodeScreen() {
         setNextDropDate(draft.nextDropIso ? new Date(draft.nextDropIso) : null);
         setPreviouslyOnEpisodeIds(draft.previouslyOnEpisodeIds || []);
         setEpisodeType(draft.episodeType || "episode");
+        setScenes(draft.scenes || []);
       }
     }
   }, [draftEpisodeId, getDraftEpisodeById]);
@@ -224,6 +394,9 @@ export default function CreateEpisodeScreen() {
               ? `For Show: ${selectedShowId}`
               : "No show selected"}
           </ThemedText>
+          {autoSaveVisible && (
+            <ThemedText style={styles.autoSavedText}>Auto-saved</ThemedText>
+          )}
           {currentDraft && (
             <ThemedText style={styles.editingLabel}>
               Editing Draft: S{currentDraft.seasonNumber}E
@@ -371,6 +544,122 @@ export default function CreateEpisodeScreen() {
         </ThemedView>
 
         <ThemedView style={styles.section}>
+          <ThemedText type="subtitle">Scenes</ThemedText>
+          <ThemedView style={styles.sceneRow}>
+            <TextInput
+              style={[styles.textInput, styles.sceneInput]}
+              placeholder="Scene title"
+              value={newSceneTitle}
+              onChangeText={setNewSceneTitle}
+            />
+            <Pressable
+              style={[
+                styles.addSceneButton,
+                !newSceneTitle.trim() && styles.disabled,
+              ]}
+              disabled={!newSceneTitle.trim()}
+              onPress={() => {
+                const title = newSceneTitle.trim();
+                if (!title) return;
+                const newScene: DraftScene = {
+                  id: `scene-${Date.now()}-${Math.random()
+                    .toString(36)
+                    .slice(2, 8)}`,
+                  title,
+                  createdAtIso: new Date().toISOString(),
+                };
+                const nextScenes = [...scenes, newScene];
+                setScenes(nextScenes);
+                setNewSceneTitle("");
+                if (currentDraft) {
+                  updateDraftEpisode(currentDraft.id, { scenes: nextScenes });
+                }
+              }}
+            >
+              <ThemedText>Add</ThemedText>
+            </Pressable>
+          </ThemedView>
+
+          {scenes.length === 0 ? (
+            <ThemedText style={styles.helperText}>
+              No scenes yet. Add your first scene.
+            </ThemedText>
+          ) : (
+            scenes.map((scene, index) => (
+              <ThemedView key={scene.id} style={styles.sceneItem}>
+                <ThemedView style={styles.sceneInfo}>
+                  <ThemedText>
+                    {index + 1}. {scene.title}
+                  </ThemedText>
+                </ThemedView>
+                <ThemedView style={styles.sceneActions}>
+                  <Pressable
+                    style={[
+                      styles.sceneActionButton,
+                      index === 0 && styles.disabled,
+                    ]}
+                    disabled={index === 0}
+                    onPress={() => {
+                      if (index === 0) return;
+                      const nextScenes = scenes.slice();
+                      const [moved] = nextScenes.splice(index, 1);
+                      nextScenes.splice(index - 1, 0, moved);
+                      setScenes(nextScenes);
+                      if (currentDraft) {
+                        updateDraftEpisode(currentDraft.id, {
+                          scenes: nextScenes,
+                        });
+                      }
+                    }}
+                  >
+                    <ThemedText>Up</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.sceneActionButton,
+                      index === scenes.length - 1 && styles.disabled,
+                    ]}
+                    disabled={index === scenes.length - 1}
+                    onPress={() => {
+                      if (index === scenes.length - 1) return;
+                      const nextScenes = scenes.slice();
+                      const [moved] = nextScenes.splice(index, 1);
+                      nextScenes.splice(index + 1, 0, moved);
+                      setScenes(nextScenes);
+                      if (currentDraft) {
+                        updateDraftEpisode(currentDraft.id, {
+                          scenes: nextScenes,
+                        });
+                      }
+                    }}
+                  >
+                    <ThemedText>Down</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    style={styles.sceneDeleteButton}
+                    onPress={() => {
+                      const nextScenes = scenes.filter(
+                        (s) => s.id !== scene.id,
+                      );
+                      setScenes(nextScenes);
+                      if (currentDraft) {
+                        updateDraftEpisode(currentDraft.id, {
+                          scenes: nextScenes,
+                        });
+                      }
+                    }}
+                  >
+                    <ThemedText style={styles.sceneDeleteText}>
+                      Remove
+                    </ThemedText>
+                  </Pressable>
+                </ThemedView>
+              </ThemedView>
+            ))
+          )}
+        </ThemedView>
+
+        <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Hook Template</ThemedText>
           {hookTemplates.map((template) => (
             <Pressable
@@ -391,162 +680,11 @@ export default function CreateEpisodeScreen() {
               </ThemedText>
             </Pressable>
           ))}
-          <Pressable
-            style={[
-              styles.createDraftButton,
-              (!selectedShowId || !episodeTitle.trim()) && styles.disabled,
-            ]}
-            disabled={!selectedShowId || !episodeTitle.trim()}
-            onPress={async () => {
-              if (!selectedShowId) {
-                setShowIdError("Show must be selected");
-                return;
-              }
-              const trimmedTitle = episodeTitle.trim();
-              if (!trimmedTitle) {
-                setTitleError("Title is required");
-                return;
-              }
-              setTitleError(null);
-              setShowIdError(null);
-              if (currentDraft) {
-                updateDraftEpisode(currentDraft.id, {
-                  title: trimmedTitle,
-                  hookTemplateId: selectedHookTemplateId,
-                  nextDropIso: nextDropDate
-                    ? nextDropDate.toISOString().slice(0, 10)
-                    : null,
-                  previouslyOnEpisodeIds,
-                });
-              } else {
-                setDraftMeta({
-                  title: trimmedTitle,
-                  showId: selectedShowId,
-                  hookTemplateId: selectedHookTemplateId,
-                  nextDropIso: nextDropDate
-                    ? nextDropDate.toISOString().slice(0, 10)
-                    : null,
-                  previouslyOnEpisodeIds,
-                });
-              }
-            }}
-          >
-            <ThemedText>Create Draft Metadata</ThemedText>
-          </Pressable>
-          {!selectedShowId && (
-            <ThemedText style={styles.errorText}>
-              Select a show first
-            </ThemedText>
-          )}
-          {draftMeta && (
-            <ThemedText style={styles.draftInfo}>
-              Draft: showId={draftMeta.showId}, hookTemplate=
-              {draftMeta.hookTemplateId}, nextDrop=
-              {draftMeta.nextDropIso
-                ? draftMeta.nextDropIso.slice(0, 10)
-                : "none"}
-              , previouslyOn=[{draftMeta.previouslyOnEpisodeIds.join(", ")}]
-            </ThemedText>
-          )}
-          <Pressable
-            style={[
-              styles.createDraftEpisodeButton,
-              ((!draftMeta && !currentDraft) || !episodeTitle.trim()) &&
-                styles.disabled,
-            ]}
-            disabled={(!draftMeta && !currentDraft) || !episodeTitle.trim()}
-            onPress={async () => {
-              if (!draftMeta && !currentDraft) return;
-              const trimmedTitle = episodeTitle.trim();
-              if (!trimmedTitle) {
-                setTitleError("Title is required");
-                return;
-              }
-              setTitleError(null);
-              try {
-                if (currentDraft) {
-                  // Update existing draft
-                  updateDraftEpisode(currentDraft.id, {
-                    title: trimmedTitle,
-                    hookTemplateId: selectedHookTemplateId,
-                    nextDropIso: nextDropDate
-                      ? nextDropDate.toISOString().slice(0, 10)
-                      : null,
-                    previouslyOnEpisodeIds,
-                  });
-                  setDraftCreated({
-                    episodeNumber: currentDraft.episodeNumber,
-                    showId: currentDraft.showId,
-                  });
-                } else {
-                  const existingPublished =
-                    await getShowEpisodes(selectedShowId);
-                  const seasonEpisodes = existingPublished.filter(
-                    (item) =>
-                      item.episode.seasonNumber === 1 &&
-                      (item.episode as any).kind !== "trailer",
-                  );
-                  const publishedMax =
-                    seasonEpisodes.length > 0
-                      ? Math.max(
-                          ...seasonEpisodes.map(
-                            (item) => item.episode.episodeNumber,
-                          ),
-                        )
-                      : 0;
-                  const existingDrafts =
-                    getDraftEpisodesByShowId(selectedShowId);
-                  const seasonDrafts = existingDrafts.filter(
-                    (d) => d.seasonNumber === 1 && d.episodeType !== "trailer",
-                  );
-                  const draftMax =
-                    seasonDrafts.length > 0
-                      ? Math.max(...seasonDrafts.map((d) => d.episodeNumber))
-                      : 0;
-                  const nextEpisodeNumber =
-                    Math.max(publishedMax, draftMax) + 1;
-                  const title = draftMeta!.title || "Episode Draft";
-                  addDraftEpisode({
-                    id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                    showId: selectedShowId,
-                    title,
-                    seasonNumber: 1,
-                    episodeNumber: nextEpisodeNumber,
-                    hookTemplateId: draftMeta!.hookTemplateId,
-                    nextDropIso: draftMeta!.nextDropIso,
-                    previouslyOnEpisodeIds: draftMeta!.previouslyOnEpisodeIds,
-                    episodeType: "episode", // Default for new drafts
-                  });
-                  setDraftCreated({
-                    episodeNumber: nextEpisodeNumber,
-                    showId: selectedShowId,
-                  });
-                }
-              } catch {
-                // Handle error if needed
-              }
-            }}
-          >
-            <ThemedText>Create Draft Episode</ThemedText>
-          </Pressable>
-          {draftCreated && (
-            <>
-              <ThemedText style={styles.draftInfo}>
-                Draft created: S1E{draftCreated.episodeNumber}
-              </ThemedText>
-              <Pressable
-                style={styles.viewShowButton}
-                onPress={() =>
-                  router.push({
-                    pathname: "/show/[id]",
-                    params: { id: draftCreated.showId },
-                  })
-                }
-              >
-                <ThemedText>View Show</ThemedText>
-              </Pressable>
-            </>
-          )}
+          <ThemedText style={styles.helperText}>
+            {selectedShowId
+              ? "Drafts auto-save as you edit."
+              : "Select a show to enable auto-save."}
+          </ThemedText>
         </ThemedView>
 
         <ThemedView style={styles.section}>
@@ -658,8 +796,7 @@ export default function CreateEpisodeScreen() {
               setShowIdError(null);
               try {
                 setPublishError(null);
-                const showId =
-                  draftMeta?.showId ?? currentDraft?.showId ?? selectedShowId;
+                const showId = currentDraft?.showId ?? selectedShowId;
                 const seasonNumber = currentDraft?.seasonNumber ?? 1;
                 let episodeNumber: number;
                 let trailerForEpisodeNumber: number | undefined;
@@ -711,8 +848,6 @@ export default function CreateEpisodeScreen() {
                 };
                 const result = await publishEpisode(input);
                 setPublishedResult(result);
-                setDraftMeta(null); // Clear after publish
-                setDraftCreated(null);
                 if (currentDraft) {
                   removeDraftEpisode(currentDraft.id);
                   setCurrentDraft(null);
@@ -826,6 +961,10 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "bold",
   },
+  autoSavedText: {
+    fontSize: 12,
+    color: "#4CAF50",
+  },
   section: {
     marginTop: 24,
   },
@@ -872,25 +1011,6 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 4,
-  },
-  createDraftButton: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: "rgba(255,0,255,0.1)",
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  createDraftEpisodeButton: {
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: "rgba(0,255,255,0.1)",
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  draftInfo: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#888",
   },
   dateInput: {
     borderWidth: 1,
@@ -978,6 +1098,50 @@ const styles = StyleSheet.create({
     color: "#FFD700",
     fontWeight: "bold",
     textAlign: "center",
+  },
+  sceneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  sceneInput: {
+    flex: 1,
+  },
+  addSceneButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "rgba(0,255,0,0.1)",
+    borderRadius: 8,
+  },
+  sceneItem: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 8,
+  },
+  sceneInfo: {
+    marginBottom: 8,
+  },
+  sceneActions: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  sceneActionButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 6,
+  },
+  sceneDeleteButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "rgba(255,0,0,0.1)",
+    borderRadius: 6,
+  },
+  sceneDeleteText: {
+    color: "#ff4d4d",
   },
   sharedBadge: {
     marginTop: 8,
