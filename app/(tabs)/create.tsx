@@ -38,6 +38,18 @@ export default function CreateScreen() {
       >
         <ThemedText>Create Show</ThemedText>
       </Pressable>
+      <Pressable
+        style={styles.earningsButton}
+        onPress={() => router.push("/earnings" as any)}
+      >
+        <ThemedText>Earnings</ThemedText>
+      </Pressable>
+      <Pressable
+        style={styles.moderationButton}
+        onPress={() => router.push("/moderation-queue" as any)}
+      >
+        <ThemedText>Moderation Queue</ThemedText>
+      </Pressable>
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Search Shows</ThemedText>
         <ThemedTextInput
@@ -113,6 +125,20 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 12,
     backgroundColor: "rgba(0,255,0,0.1)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  earningsButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "rgba(0,123,255,0.12)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  moderationButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "rgba(255,0,0,0.12)",
     borderRadius: 8,
     alignItems: "center",
   },

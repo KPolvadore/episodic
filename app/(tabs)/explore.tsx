@@ -8,6 +8,7 @@ import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { getMixedFeed, type FeedItem, type FeedType } from "@/src/api/feed.api";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 type TrendingShow = { id: string; title: string };
 type TrendingTopic = { id: string; title: string };
@@ -26,6 +27,7 @@ const TRENDING_TOPICS: TrendingTopic[] = [
 
 export default function TabTwoScreen() {
   const [query, setQuery] = useState("");
+  const { isShowHidden } = useVisibilityStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState<{
@@ -76,7 +78,9 @@ export default function TabTwoScreen() {
 
   const q = query.trim().toLowerCase();
   const showResults = q
-    ? index.shows.filter((s) => s.title.toLowerCase().includes(q))
+    ? index.shows.filter(
+        (s) => s.title.toLowerCase().includes(q) && !isShowHidden(s.id),
+      )
     : [];
   const topicResults = q
     ? index.topics.filter((t) => t.title.toLowerCase().includes(q))
@@ -102,15 +106,17 @@ export default function TabTwoScreen() {
         {error && <ThemedText>Error: {error}</ThemedText>}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Trending Shows</ThemedText>
-          {TRENDING_SHOWS.map((show) => (
-            <Pressable
-              key={show.id}
-              style={styles.item}
-              onPress={() => router.push(`/show/${show.id}`)}
-            >
-              <ThemedText>{show.title}</ThemedText>
-            </Pressable>
-          ))}
+          {TRENDING_SHOWS.filter((show) => !isShowHidden(show.id)).map(
+            (show) => (
+              <Pressable
+                key={show.id}
+                style={styles.item}
+                onPress={() => router.push(`/show/${show.id}`)}
+              >
+                <ThemedText>{show.title}</ThemedText>
+              </Pressable>
+            ),
+          )}
         </ThemedView>
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Trending Topics</ThemedText>

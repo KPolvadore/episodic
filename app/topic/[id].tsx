@@ -13,6 +13,7 @@ import {
   getTopicById,
 } from "@/src/api/feed.api";
 import { useLibraryStore } from "@/src/state/library-store";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 const TopicScreen = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,6 +24,7 @@ const TopicScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { isTopicSaved, toggleTopic } = useLibraryStore();
+  const { isShowHidden, isEpisodeHidden } = useVisibilityStore();
 
   useEffect(() => {
     const loadTopicData = async () => {
@@ -37,13 +39,19 @@ const TopicScreen = () => {
         setTopic(topicData);
 
         const shows = await getShowsByTopic(id);
-        setAttachedShows(shows);
+        setAttachedShows(shows.filter((show) => !isShowHidden(show.id)));
 
         const topicEpisodes = await getEpisodesByTopic(id);
         const dedupedEpisodes = Array.from(
           new Map(topicEpisodes.map((e) => [e.episode.id, e])).values(),
         );
-        setEpisodes(dedupedEpisodes);
+        setEpisodes(
+          dedupedEpisodes.filter(
+            (episode) =>
+              !isShowHidden(episode.show.id) &&
+              !isEpisodeHidden(episode.episode.id),
+          ),
+        );
       } catch {
         setError("Failed to load topic data");
       } finally {
@@ -53,7 +61,7 @@ const TopicScreen = () => {
     if (id) {
       loadTopicData();
     }
-  }, [id]);
+  }, [id, isEpisodeHidden, isShowHidden]);
 
   if (loading) {
     return (
