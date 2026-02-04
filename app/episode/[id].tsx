@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Alert, Modal, Pressable, StyleSheet } from "react-native";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
@@ -8,7 +8,7 @@ import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
-    getFeed,
+  getFeed,
     getShowEpisodes,
     getTopicById,
     resolveShowById,
@@ -20,11 +20,14 @@ import {
   type Comment,
   useCommentsStore,
 } from "@/src/state/comments-store";
+import { useRateLimitStore } from "@/src/state/rate-limit-store";
 import {
   getGuaranteedPollForEpisode,
   getPollForEpisode,
   usePollStore,
 } from "@/src/state/poll-store";
+import { useReportsStore } from "@/src/state/reports-store";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 const EMPTY_COMMENTS: readonly Comment[] = [];
 
@@ -65,6 +68,20 @@ export default function EpisodeScreen() {
   const addComment = useCommentsStore((s) => s.addComment);
   const [commentBody, setCommentBody] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
+  const { addReport } = useReportsStore();
+  const { isEpisodeHidden } = useVisibilityStore();
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedReportReason, setSelectedReportReason] = useState<
+    string | null
+  >(null);
+  const { canPerform, recordAction, getRemainingMs } = useRateLimitStore();
+  const reportReasons = [
+    "Spam or misleading",
+    "Hate or harassment",
+    "Violence or harmful content",
+    "Copyright infringement",
+    "Other",
+  ];
 
   useEffect(() => {
     const loadEpisode = async () => {
@@ -154,18 +171,41 @@ export default function EpisodeScreen() {
     }
   }, [episodeItem]);
 
+  if (
+    episodeItem &&
+    isEpisodeHidden(episodeItem.episode.id) &&
+    !getCreatorStore().getShowById(episodeItem.show.id)
+  ) {
+    return (
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
+        headerImage={
+          <IconSymbol
+            size={310}
+            color="#808080"
+            name="play.circle"
+            style={styles.headerImage}
+          />
+        }
+      >
+        <ThemedText>This episode is currently hidden.</ThemedText>
+      </ParallaxScrollView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="play.circle"
-          style={styles.headerImage}
-        />
-      }
-    >
+    <>
+      <ParallaxScrollView
+        headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
+        headerImage={
+          <IconSymbol
+            size={310}
+            color="#808080"
+            name="play.circle"
+            style={styles.headerImage}
+          />
+        }
+      >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Episode Player</ThemedText>
       </ThemedView>
@@ -349,6 +389,12 @@ export default function EpisodeScreen() {
             <ThemedText type="subtitle">
               Comments ({comments.length})
             </ThemedText>
+            <Pressable
+              style={styles.reportButton}
+              onPress={() => setReportModalVisible(true)}
+            >
+              <ThemedText>Report Episode</ThemedText>
+            </Pressable>
             <ThemedView style={styles.commentComposer}>
               <ThemedTextInput
                 style={styles.commentInput}
@@ -378,7 +424,17 @@ export default function EpisodeScreen() {
                     );
                     return;
                   }
+                  if (!canPerform("comment")) {
+                    const remaining = getRemainingMs("comment");
+                    setCommentError(
+                      `You're commenting too fast. Try again in ${Math.ceil(
+                        remaining / 1000,
+                      )}s.`,
+                    );
+                    return;
+                  }
                   addComment(episodeId, trimmed);
+                  recordAction("comment");
                   setCommentBody("");
                   setCommentError(null);
                 }}
@@ -415,7 +471,71 @@ export default function EpisodeScreen() {
           </ThemedView>
         </>
       )}
-    </ParallaxScrollView>
+      </ParallaxScrollView>
+      <Modal visible={reportModalVisible} transparent animationType="slide">
+        <ThemedView style={styles.modalBackdrop}>
+          <ThemedView style={styles.modalCard}>
+            <ThemedText type="subtitle">Report Episode</ThemedText>
+            <ThemedText>Episode ID: {episodeId}</ThemedText>
+            <ThemedView style={styles.reportReasons}>
+              {reportReasons.map((reason) => (
+                <Pressable
+                  key={reason}
+                  style={[
+                    styles.reportReason,
+                    selectedReportReason === reason &&
+                      styles.reportReasonSelected,
+                  ]}
+                  onPress={() => setSelectedReportReason(reason)}
+                >
+                  <ThemedText>{reason}</ThemedText>
+                </Pressable>
+              ))}
+            </ThemedView>
+            <Pressable
+              style={[
+                styles.reportSubmit,
+                !selectedReportReason && styles.reportSubmitDisabled,
+              ]}
+              disabled={!selectedReportReason}
+              onPress={() => {
+                if (!selectedReportReason) return;
+                if (!canPerform("report")) {
+                  const remaining = getRemainingMs("report");
+                  Alert.alert(
+                    "Slow down",
+                    `You're submitting reports too quickly. Try again in ${Math.ceil(
+                      remaining / 1000,
+                    )}s.`,
+                  );
+                  return;
+                }
+                addReport({
+                  targetType: "episode",
+                  targetId: episodeId,
+                  reason: selectedReportReason,
+                });
+                recordAction("report");
+                setSelectedReportReason(null);
+                setReportModalVisible(false);
+                Alert.alert(
+                  "Report submitted",
+                  "Thanks for helping keep Episodic safe.",
+                );
+              }}
+            >
+              <ThemedText>Submit Report</ThemedText>
+            </Pressable>
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setReportModalVisible(false)}
+            >
+              <ThemedText>Cancel</ThemedText>
+            </Pressable>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
+    </>
   );
 }
 
@@ -539,6 +659,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.05)",
     gap: 4,
   },
+  reportButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,0,0,0.12)",
+  },
   commentAuthor: {
     fontSize: 12,
     color: "#9ad0ff",
@@ -547,6 +674,48 @@ const styles = StyleSheet.create({
   commentMeta: {
     fontSize: 11,
     color: "#666",
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalCard: {
+    width: "88%",
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  reportReasons: {
+    gap: 8,
+  },
+  reportReason: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  reportReasonSelected: {
+    backgroundColor: "rgba(255,0,0,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,0,0,0.4)",
+  },
+  reportSubmit: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,0,0,0.2)",
+    alignItems: "center",
+  },
+  reportSubmitDisabled: {
+    opacity: 0.5,
+  },
+  closeButton: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    alignItems: "center",
   },
   upNextContainer: {
     marginTop: 16,

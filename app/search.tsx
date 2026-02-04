@@ -6,6 +6,7 @@ import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedTextInput } from "@/components/themed-text-input";
 import { ThemedView } from "@/components/themed-view";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 const mockShows = [
   { id: "show1", title: "The Daily Grind" },
@@ -21,9 +22,12 @@ const mockTopics = [
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
+  const { isShowHidden } = useVisibilityStore();
 
-  const filteredShows = mockShows.filter((show) =>
-    show.title.toLowerCase().includes(query.toLowerCase()),
+  const filteredShows = mockShows.filter(
+    (show) =>
+      show.title.toLowerCase().includes(query.toLowerCase()) &&
+      !isShowHidden(show.id),
   );
   const filteredTopics = mockTopics.filter((topic) =>
     topic.title.toLowerCase().includes(query.toLowerCase()),

@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Alert, Modal, Pressable, StyleSheet } from "react-native";
 import Animated from "react-native-reanimated";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
@@ -16,8 +16,13 @@ import {
   type FeedItem,
 } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
+import { useEntitlementsStore } from "@/src/state/entitlements-store";
 import { useFollowStore } from "@/src/state/follow-store";
 import { useLibraryStore } from "@/src/state/library-store";
+import { useRateLimitStore } from "@/src/state/rate-limit-store";
+import { useTipsStore } from "@/src/state/tips-store";
+import { useReportsStore } from "@/src/state/reports-store";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 export default function ShowScreen() {
   const { id, fromSpecial, episodeId, fromContinue } = useLocalSearchParams<{
@@ -29,7 +34,42 @@ export default function ShowScreen() {
 
   const { isShowSaved, toggleShow } = useLibraryStore();
   const { isShowFollowed, toggleFollowShow } = useFollowStore();
+  const { hasSeasonPass, purchaseSeasonPass } = useEntitlementsStore();
+  const { addTip } = useTipsStore();
+  const { addReport } = useReportsStore();
+  const { canPerform, recordAction, getRemainingMs } = useRateLimitStore();
+  const {
+    isShowHidden,
+    isEpisodeHidden,
+    hideShow,
+    unhideShow,
+    hideEpisode,
+    unhideEpisode,
+  } = useVisibilityStore();
   const draftEpisodes = useCreatorStore((s) => s.getDraftEpisodesByShowId(id));
+  const isCreatorShow = !!useCreatorStore((s) => s.getShowById(id));
+  const isEntitled = isCreatorShow || hasSeasonPass(id);
+  const showHidden = isShowHidden(id);
+  const [tipModalVisible, setTipModalVisible] = useState(false);
+  const [selectedTipAmount, setSelectedTipAmount] = useState<number | null>(
+    null,
+  );
+  const [lastReceipt, setLastReceipt] = useState<{
+    showTitle: string;
+    amount: number;
+    createdAtIso: string;
+  } | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [selectedReportReason, setSelectedReportReason] = useState<
+    string | null
+  >(null);
+  const reportReasons = [
+    "Spam or misleading",
+    "Hate or harassment",
+    "Violence or harmful content",
+    "Copyright infringement",
+    "Other",
+  ];
 
   type RenderEpisode = {
     id: string;
@@ -219,18 +259,19 @@ export default function ShowScreen() {
   }, [offsets, targetEpisodeId]);
 
   return (
-    <ParallaxScrollView
-      ref={scrollRef}
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="tv"
-          style={styles.headerImage}
-        />
-      }
-    >
+    <>
+      <ParallaxScrollView
+        ref={scrollRef}
+        headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
+        headerImage={
+          <IconSymbol
+            size={310}
+            color="#808080"
+            name="tv"
+            style={styles.headerImage}
+          />
+        }
+      >
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">{showTitle}</ThemedText>
         <ThemedText>Show ID: {id}</ThemedText>
@@ -281,6 +322,21 @@ export default function ShowScreen() {
         <ThemedText>Create a new episode for this show</ThemedText>
       </Pressable>
 
+      {!isEntitled && (
+        <ThemedView style={styles.paywallCard}>
+          <ThemedText type="subtitle">Season Pass Required</ThemedText>
+          <ThemedText>
+            Unlock all episodes for this show with a season pass.
+          </ThemedText>
+          <Pressable
+            style={styles.purchaseButton}
+            onPress={() => purchaseSeasonPass(id)}
+          >
+            <ThemedText>Unlock Season Pass (Mock)</ThemedText>
+          </Pressable>
+        </ThemedView>
+      )}
+
       <Pressable style={styles.saveButton} onPress={() => toggleShow(id)}>
         <ThemedText>{isShowSaved(id) ? "Saved ✓" : "Save"}</ThemedText>
       </Pressable>
@@ -291,6 +347,21 @@ export default function ShowScreen() {
       >
         <ThemedText>{isShowFollowed(id) ? "Following" : "Follow"}</ThemedText>
       </Pressable>
+
+      {isCreatorShow && (
+        <Pressable
+          style={styles.hideShowButton}
+          onPress={() => {
+            if (showHidden) {
+              unhideShow(id);
+            } else {
+              hideShow(id);
+            }
+          }}
+        >
+          <ThemedText>{showHidden ? "Unhide Show" : "Hide Show"}</ThemedText>
+        </Pressable>
+      )}
 
       <Pressable
         style={styles.writersRoomButton}
@@ -304,6 +375,22 @@ export default function ShowScreen() {
       >
         <ThemedText>Writers Room</ThemedText>
         <ThemedText>Manage collaborators</ThemedText>
+      </Pressable>
+
+      <Pressable
+        style={styles.reportButton}
+        onPress={() => setReportModalVisible(true)}
+      >
+        <ThemedText>Report Show</ThemedText>
+        <ThemedText>Flag this show</ThemedText>
+      </Pressable>
+
+      <Pressable
+        style={styles.tipButton}
+        onPress={() => setTipModalVisible(true)}
+      >
+        <ThemedText>Tip This Show</ThemedText>
+        <ThemedText>Support the creator</ThemedText>
       </Pressable>
 
       {fromSpecial && (
@@ -340,12 +427,19 @@ export default function ShowScreen() {
       {loading && <ThemedText>Loading...</ThemedText>}
       {error && <ThemedText>Error: {error}</ThemedText>}
 
-      {!loading && !error && episodes.length === 0 && (
+      {!loading && !error && showHidden && !isCreatorShow && (
+        <ThemedView style={styles.hiddenBanner}>
+          <ThemedText>This show is currently hidden.</ThemedText>
+        </ThemedView>
+      )}
+
+      {!loading && !error && episodes.length === 0 && !showHidden && (
         <ThemedText>No episodes yet</ThemedText>
       )}
 
       {!loading &&
         !error &&
+        !showHidden &&
         Object.entries(
           mergedEpisodes.reduce(
             (acc, episode) => {
@@ -378,12 +472,19 @@ export default function ShowScreen() {
               </Pressable>
 
               {!isCollapsed &&
-                eps.map((episode) => (
+                eps
+                  .filter(
+                    (episode) =>
+                      isCreatorShow || !isEpisodeHidden(episode.id),
+                  )
+                  .map((episode) => (
                   <Pressable
                     key={episode.id}
                     style={[
                       styles.episodeContainer,
+                      !isEntitled && !episode.isDraft && styles.lockedEpisode,
                       episode.isDraft && styles.draftEpisode,
+                      isEpisodeHidden(episode.id) && styles.hiddenEpisode,
                       targetEpisodeId && episode.id === targetEpisodeId
                         ? styles.episodeHighlighted
                         : null,
@@ -399,6 +500,13 @@ export default function ShowScreen() {
                       });
                     }}
                     onPress={() => {
+                      if (!isEntitled && !episode.isDraft) {
+                        Alert.alert(
+                          "Season Pass Required",
+                          "Purchase a season pass to watch this episode.",
+                        );
+                        return;
+                      }
                       if (episode.isDraft) {
                         router.push({
                           pathname: "/create-episode",
@@ -422,13 +530,158 @@ export default function ShowScreen() {
                       {episode.isTrailer && episode.trailerForEpisodeNumber
                         ? ` (for Episode ${episode.trailerForEpisodeNumber})`
                         : ""}
+                      {!isEntitled && !episode.isDraft ? " • Locked" : ""}
+                      {isCreatorShow && isEpisodeHidden(episode.id)
+                        ? " • Hidden"
+                        : ""}
                     </ThemedText>
+                    {isCreatorShow && !episode.isDraft && (
+                      <Pressable
+                        style={styles.hideToggleButton}
+                        onPress={() => {
+                          if (isEpisodeHidden(episode.id)) {
+                            unhideEpisode(episode.id);
+                          } else {
+                            hideEpisode(episode.id);
+                          }
+                        }}
+                      >
+                        <ThemedText style={styles.hideToggleText}>
+                          {isEpisodeHidden(episode.id) ? "Unhide" : "Hide"}
+                        </ThemedText>
+                      </Pressable>
+                    )}
                   </Pressable>
                 ))}
             </ThemedView>
           );
         })}
-    </ParallaxScrollView>
+      </ParallaxScrollView>
+      <Modal visible={tipModalVisible} transparent animationType="slide">
+        <ThemedView style={styles.modalBackdrop}>
+          <ThemedView style={styles.modalCard}>
+            <ThemedText type="subtitle">Send a Tip</ThemedText>
+            <ThemedText>{showTitle}</ThemedText>
+            <ThemedView style={styles.tipRow}>
+              {[2, 5, 10].map((amount) => (
+                <Pressable
+                  key={amount}
+                  style={[
+                    styles.tipAmount,
+                    selectedTipAmount === amount && styles.tipAmountSelected,
+                  ]}
+                  onPress={() => setSelectedTipAmount(amount)}
+                >
+                  <ThemedText>${amount}</ThemedText>
+                </Pressable>
+              ))}
+            </ThemedView>
+            <Pressable
+              style={[
+                styles.tipConfirmButton,
+                !selectedTipAmount && styles.tipConfirmDisabled,
+              ]}
+              disabled={!selectedTipAmount}
+              onPress={() => {
+                if (!selectedTipAmount) return;
+                const receipt = addTip({
+                  showId: id,
+                  showTitle,
+                  amount: selectedTipAmount,
+                });
+                setLastReceipt({
+                  showTitle: receipt.showTitle,
+                  amount: receipt.amount,
+                  createdAtIso: receipt.createdAtIso,
+                });
+                setSelectedTipAmount(null);
+              }}
+            >
+              <ThemedText>Send Tip (Mock)</ThemedText>
+            </Pressable>
+            {lastReceipt && (
+              <ThemedView style={styles.receiptCard}>
+                <ThemedText type="subtitle">Receipt</ThemedText>
+                <ThemedText>{lastReceipt.showTitle}</ThemedText>
+                <ThemedText>Amount: ${lastReceipt.amount}</ThemedText>
+                <ThemedText style={styles.meta}>
+                  {new Date(lastReceipt.createdAtIso).toLocaleString()}
+                </ThemedText>
+              </ThemedView>
+            )}
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setTipModalVisible(false)}
+            >
+              <ThemedText>Close</ThemedText>
+            </Pressable>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
+      <Modal visible={reportModalVisible} transparent animationType="slide">
+        <ThemedView style={styles.modalBackdrop}>
+          <ThemedView style={styles.modalCard}>
+            <ThemedText type="subtitle">Report Show</ThemedText>
+            <ThemedText>{showTitle}</ThemedText>
+            <ThemedView style={styles.reportReasons}>
+              {reportReasons.map((reason) => (
+                <Pressable
+                  key={reason}
+                  style={[
+                    styles.reportReason,
+                    selectedReportReason === reason &&
+                      styles.reportReasonSelected,
+                  ]}
+                  onPress={() => setSelectedReportReason(reason)}
+                >
+                  <ThemedText>{reason}</ThemedText>
+                </Pressable>
+              ))}
+            </ThemedView>
+            <Pressable
+              style={[
+                styles.tipConfirmButton,
+                !selectedReportReason && styles.tipConfirmDisabled,
+              ]}
+              disabled={!selectedReportReason}
+              onPress={() => {
+                if (!selectedReportReason) return;
+                if (!canPerform("report")) {
+                  const remaining = getRemainingMs("report");
+                  Alert.alert(
+                    "Slow down",
+                    `You're submitting reports too quickly. Try again in ${Math.ceil(
+                      remaining / 1000,
+                    )}s.`,
+                  );
+                  return;
+                }
+                addReport({
+                  targetType: "show",
+                  targetId: id,
+                  reason: selectedReportReason,
+                });
+                recordAction("report");
+                setSelectedReportReason(null);
+                setReportModalVisible(false);
+                Alert.alert(
+                  "Report submitted",
+                  "Thanks for helping keep Episodic safe.",
+                );
+              }}
+            >
+              <ThemedText>Submit Report</ThemedText>
+            </Pressable>
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setReportModalVisible(false)}
+            >
+              <ThemedText>Cancel</ThemedText>
+            </Pressable>
+          </ThemedView>
+        </ThemedView>
+      </Modal>
+    </>
   );
 }
 
@@ -452,6 +705,13 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     alignSelf: "flex-start",
   },
+  hideShowButton: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: "rgba(255,0,0,0.12)",
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
   createEpisodeButton: {
     marginTop: 16,
     padding: 12,
@@ -463,6 +723,51 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 12,
     backgroundColor: "rgba(255,0,255,0.1)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  hideToggleButton: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: "rgba(255,0,0,0.12)",
+    alignSelf: "flex-start",
+  },
+  hideToggleText: {
+    fontSize: 12,
+    color: "#cc3333",
+  },
+  hiddenBanner: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "rgba(255,0,0,0.12)",
+    borderRadius: 8,
+  },
+  tipButton: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "rgba(0,123,255,0.12)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  reportButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "rgba(255,0,0,0.12)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  paywallCard: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "rgba(255,165,0,0.12)",
+    borderRadius: 10,
+    gap: 8,
+  },
+  purchaseButton: {
+    padding: 10,
+    backgroundColor: "rgba(255,165,0,0.2)",
     borderRadius: 8,
     alignItems: "center",
   },
@@ -488,6 +793,79 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 8,
+  },
+  hiddenEpisode: {
+    opacity: 0.7,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalCard: {
+    width: "88%",
+    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  tipRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  tipAmount: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  tipAmountSelected: {
+    backgroundColor: "rgba(0,123,255,0.2)",
+    borderWidth: 1,
+    borderColor: "rgba(0,123,255,0.5)",
+  },
+  tipConfirmButton: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,123,255,0.18)",
+    alignItems: "center",
+  },
+  tipConfirmDisabled: {
+    opacity: 0.5,
+  },
+  receiptCard: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    gap: 4,
+  },
+  reportReasons: {
+    gap: 8,
+  },
+  reportReason: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  reportReasonSelected: {
+    backgroundColor: "rgba(255,0,0,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(255,0,0,0.4)",
+  },
+  meta: {
+    fontSize: 11,
+    color: "#666",
+  },
+  closeButton: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.06)",
+    alignItems: "center",
+  },
+  lockedEpisode: {
+    opacity: 0.6,
   },
   draftEpisode: {
     backgroundColor: "rgba(255,255,0,0.1)",

@@ -117,6 +117,7 @@ f) EAS build+submit ready for iOS+Android
   - EAS profiles: dev / preview / production have correct values and no missing runtime keys.
   - App boots without “missing env” errors in all profiles.
   - No secrets committed to git.
+- Canonical list: see `docs/ENV.md`.
 - In-App Verification:
   - Run app in dev profile: app boots to tabs, no env errors.
   - Run preview/prod build (or simulate config): app boots, no env errors.
@@ -1879,6 +1880,7 @@ This workstream runs alongside Phases 2–4 once Phase 1 contracts are stable.
 
 We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progress.
 
+- [x] Phase P0 — Step 01: Env vars strategy (app.config + EAS secrets), dev/stage/prod configs
 - [x] Phase 1 — Step 01: Feed boundary + multi-feed types wired to UI
 - [x] Phase 1 — Step 02: Show hub route + episode list by show
 - [x] Phase 1 — Step 03: Episode route + previous/up-next + S/E badge + next drop placeholder
@@ -1946,6 +1948,14 @@ We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progre
 - [x] Phase 3 — Step 10: Notifications v1 (invites, new episode, poll posted)
 - [x] Phase 3 — Step 11: Discovery surfaces v1 (Trending shows/topics mock)
 - [x] Phase 3 — Step 12: Phase 3 hardening sweep (navigation + persistence + quality gates)
+- [x] Phase 4 — Step 01: Entitlements model v1 (season pass per show; mock purchase)
+- [x] Phase 4 — Step 02: Tips per show v1 (mock tip flow; receipt UI)
+- [x] Phase 4 — Step 03: Creator earnings dashboard stub (UI only)
+- [x] Phase 4 — Step 04: Content reporting hooks (report episode/show)
+- [x] Phase 4 — Step 05: Rate limit + abuse guard stubs (local throttles)
+- [x] Phase 4 — Step 06: Moderation queue stub (flagged content list UI)
+- [x] Phase 4 — Step 07: Privacy controls v1 (hide show/hide episodes; mock)
+- [x] Phase 4 — Step 08: Phase 4 hardening sweep
 
 ---
 

@@ -1,0 +1,46 @@
+{
+  "cli": {
+    "version": ">= 9.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_API_BASE_URL": "REPLACE_ME",
+        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_ME",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_ME",
+        "EXPO_PUBLIC_MUX_TOKEN_ID": "REPLACE_ME",
+        "EXPO_PUBLIC_MUX_TOKEN_SECRET": "REPLACE_ME",
+        "EXPO_PUBLIC_SENTRY_DSN": "REPLACE_ME",
+        "EXPO_PUBLIC_FEATURE_USE_MOCKS": "true"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "EXPO_PUBLIC_API_BASE_URL": "REPLACE_ME",
+        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_ME",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_ME",
+        "EXPO_PUBLIC_MUX_TOKEN_ID": "REPLACE_ME",
+        "EXPO_PUBLIC_MUX_TOKEN_SECRET": "REPLACE_ME",
+        "EXPO_PUBLIC_SENTRY_DSN": "REPLACE_ME",
+        "EXPO_PUBLIC_FEATURE_USE_MOCKS": "false"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
+        "EXPO_PUBLIC_API_BASE_URL": "REPLACE_ME",
+        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_ME",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_ME",
+        "EXPO_PUBLIC_MUX_TOKEN_ID": "REPLACE_ME",
+        "EXPO_PUBLIC_MUX_TOKEN_SECRET": "REPLACE_ME",
+        "EXPO_PUBLIC_SENTRY_DSN": "REPLACE_ME",
+        "EXPO_PUBLIC_FEATURE_USE_MOCKS": "false"
+      }
+    }
+  }
+}

@@ -17,6 +17,7 @@ import {
 import { useCreatorStore } from "@/src/state/creator-store";
 import { useFeedStore } from "@/src/state/feed-store";
 import { useFollowStore } from "@/src/state/follow-store";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 type FeedShowItem = {
   type: "show";
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const { shows: creatorShows } = useCreatorStore();
   const { feedMode, hydrated, setFeedMode } = useFeedStore();
   const { isShowFollowed, getFollowedShowIds } = useFollowStore();
+  const { isShowHidden, isEpisodeHidden } = useVisibilityStore();
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -77,14 +79,21 @@ export default function HomeScreen() {
       const dedupedSpecials = Array.from(specialsMap.values());
 
       // Filter for following mode if selected
-      let filteredEpisodes = dedupedEpisodes;
-      let filteredSpecials = dedupedSpecials;
+      let filteredEpisodes = dedupedEpisodes.filter(
+        (item) =>
+          !isShowHidden(item.show.id) && !isEpisodeHidden(item.episode.id),
+      );
+      let filteredSpecials = dedupedSpecials.filter((item) => {
+        if (!item.attachedShowIds || item.attachedShowIds.length === 0)
+          return true;
+        return item.attachedShowIds.some((showId) => !isShowHidden(showId));
+      });
       if (feedMode === "following") {
         const followedShowIds = getFollowedShowIds();
-        filteredEpisodes = dedupedEpisodes.filter((item) =>
+        filteredEpisodes = filteredEpisodes.filter((item) =>
           followedShowIds.includes(item.show.id),
         );
-        filteredSpecials = dedupedSpecials.filter(
+        filteredSpecials = filteredSpecials.filter(
           (item) =>
             item.attachedShowIds?.some((showId) =>
               followedShowIds.includes(showId),
@@ -140,6 +149,8 @@ export default function HomeScreen() {
     creatorShows,
     feedMode,
     getFollowedShowIds,
+    isEpisodeHidden,
+    isShowHidden,
   ]);
 
   useEffect(() => {

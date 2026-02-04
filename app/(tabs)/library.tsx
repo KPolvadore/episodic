@@ -9,6 +9,7 @@ import { getMixedFeed, type FeedItem } from "@/src/api/feed.api";
 import { useCreatorStore } from "@/src/state/creator-store";
 import { useFollowStore } from "@/src/state/follow-store";
 import { useLibraryStore } from "@/src/state/library-store";
+import { useVisibilityStore } from "@/src/state/visibility-store";
 
 export default function LibraryScreen() {
   // Phase 3 Step 01b Acceptance Criteria Verified:
@@ -21,6 +22,7 @@ export default function LibraryScreen() {
   const { savedShowIds, savedTopicIds, hydrate } = useLibraryStore();
   const { shows: createdShows, getShowById } = useCreatorStore();
   const { getFollowedShowIds, unfollowShow } = useFollowStore();
+  const { isShowHidden, isEpisodeHidden } = useVisibilityStore();
   const [continueItems, setContinueItems] = useState<FeedItem[]>([]);
   const [showMap, setShowMap] = useState<Map<string, string>>(new Map());
   const [topicMap, setTopicMap] = useState<Map<string, string>>(new Map());
@@ -33,7 +35,14 @@ export default function LibraryScreen() {
       try {
         // Load continue watching
         const continueData = await getMixedFeed("continue");
-        setContinueItems(continueData);
+        setContinueItems(
+          continueData.filter(
+            (item) =>
+              item.type !== "episode" ||
+              (!isShowHidden(item.show.id) &&
+                !isEpisodeHidden(item.episode.id)),
+          ),
+        );
 
         // Load all feeds for show/topic maps
         const [newFeed, continueFeed, localFeed, newShowsOnlyFeed] =
@@ -72,7 +81,7 @@ export default function LibraryScreen() {
       }
     };
     loadData();
-  }, [hydrate]);
+  }, [hydrate, isEpisodeHidden, isShowHidden]);
 
   const getShowTitle = (showId: string): string => {
     // First try creator store
@@ -90,7 +99,9 @@ export default function LibraryScreen() {
     return `Show ${showId}`;
   };
 
-  const followedShowIds = getFollowedShowIds();
+  const followedShowIds = getFollowedShowIds().filter(
+    (showId) => !isShowHidden(showId),
+  );
 
   if (loading) {
     return (
@@ -206,25 +217,28 @@ export default function LibraryScreen() {
         {/* Saved Shows Section */}
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">Saved Shows</ThemedText>
-          {savedShowIds.length === 0 ? (
+          {savedShowIds.filter((showId) => !isShowHidden(showId)).length ===
+          0 ? (
             <ThemedText>Nothing saved yet</ThemedText>
           ) : (
-            savedShowIds.map((showId) => (
-              <Pressable
-                key={showId}
-                style={styles.item}
-                onPress={() =>
-                  router.push({
-                    pathname: "/show/[id]",
-                    params: { id: showId },
-                  })
-                }
-              >
-                <ThemedText>
-                  {showMap.get(showId) || `Show ${showId}`}
-                </ThemedText>
-              </Pressable>
-            ))
+            savedShowIds
+              .filter((showId) => !isShowHidden(showId))
+              .map((showId) => (
+                <Pressable
+                  key={showId}
+                  style={styles.item}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/show/[id]",
+                      params: { id: showId },
+                    })
+                  }
+                >
+                  <ThemedText>
+                    {showMap.get(showId) || `Show ${showId}`}
+                  </ThemedText>
+                </Pressable>
+              ))
           )}
         </ThemedView>
 
