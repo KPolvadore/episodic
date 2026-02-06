@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Alert, Pressable, StyleSheet } from "react-native";
+import { Sentry } from "@/src/lib/sentry";
 
 import ParallaxScrollView from "@/components/parallax-scroll-view";
 import { ThemedText } from "@/components/themed-text";
@@ -50,6 +51,23 @@ export default function CreateScreen() {
       >
         <ThemedText>Moderation Queue</ThemedText>
       </Pressable>
+      {__DEV__ && (
+        <Pressable
+          style={styles.sentryButton}
+          onPress={async () => {
+            const eventId = Sentry.captureException(
+              new Error("Sentry test error"),
+            );
+            await Sentry.flush(2000);
+            Alert.alert(
+              "Sentry",
+              `Sent test event: ${eventId}. Check Issues.`,
+            );
+          }}
+        >
+          <ThemedText>Send Test Error</ThemedText>
+        </Pressable>
+      )}
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Search Shows</ThemedText>
         <ThemedTextInput
@@ -139,6 +157,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 12,
     backgroundColor: "rgba(255,0,0,0.12)",
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  sentryButton: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "rgba(255,165,0,0.14)",
     borderRadius: 8,
     alignItems: "center",
   },

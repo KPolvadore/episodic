@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { getMixedFeed, type FeedItem } from "@/src/api/feed.api";
+import { logger } from "@/src/lib/logger";
 import { useCreatorStore } from "@/src/state/creator-store";
 import { useFollowStore } from "@/src/state/follow-store";
 import { useLibraryStore } from "@/src/state/library-store";
@@ -19,7 +20,7 @@ export default function LibraryScreen() {
   // - Unfollow removes the row immediately: unfollowShow(showId) call triggers store update, component re-renders
   // - Navigation from followed show row goes to /show/[id] with correct param: router.push with pathname "/show/[id]" and params { id: showId }
   // - No VirtualizedList nesting warnings: uses ScrollView (not SectionList/FlatList), no nesting issues
-  const { savedShowIds, savedTopicIds, hydrate } = useLibraryStore();
+  const { savedShowIds, savedTopicIds } = useLibraryStore();
   const { shows: createdShows, getShowById } = useCreatorStore();
   const { getFollowedShowIds, unfollowShow } = useFollowStore();
   const { isShowHidden, isEpisodeHidden } = useVisibilityStore();
@@ -27,11 +28,12 @@ export default function LibraryScreen() {
   const [showMap, setShowMap] = useState<Map<string, string>>(new Map());
   const [topicMap, setTopicMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
-      await hydrate();
       setLoading(true);
+      setErrorMessage(null);
       try {
         // Load continue watching
         const continueData = await getMixedFeed("continue");
@@ -75,13 +77,14 @@ export default function LibraryScreen() {
         setShowMap(shows);
         setTopicMap(topics);
       } catch (error) {
-        console.error("Failed to load library data:", error);
+        logger.error("Failed to load library data", error);
+        setErrorMessage("Library data failed to load. Please try again.");
       } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, [hydrate, isEpisodeHidden, isShowHidden]);
+  }, [isEpisodeHidden, isShowHidden]);
 
   const getShowTitle = (showId: string): string => {
     // First try creator store
@@ -117,6 +120,11 @@ export default function LibraryScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <ThemedText type="title">Library</ThemedText>
+        {errorMessage && (
+          <ThemedView style={styles.errorBanner}>
+            <ThemedText>{errorMessage}</ThemedText>
+          </ThemedView>
+        )}
 
         {/* Continue Watching Section */}
         <ThemedView style={styles.section}>
@@ -277,6 +285,12 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     padding: 16,
+  },
+  errorBanner: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "rgba(255, 107, 107, 0.15)",
+    borderRadius: 8,
   },
   section: {
     marginTop: 24,

@@ -1,6 +1,85 @@
 // Stable feed API boundary for the Episodic App
 
+import Constants from "expo-constants";
 import { getCreatorStore, useCreatorStore } from "../state/creator-store";
+import { logger } from "../lib/logger";
+
+const runtimeExtra = (Constants.expoConfig?.extra ||
+  (Constants as any)?.manifest?.extra ||
+  {}) as Record<string, string | undefined>;
+
+const API_BASE_URL = String(
+  runtimeExtra.EXPO_PUBLIC_API_BASE_URL ||
+    process.env.EXPO_PUBLIC_API_BASE_URL ||
+    "",
+).trim();
+
+const USE_MOCKS =
+  String(
+    runtimeExtra.EXPO_PUBLIC_FEATURE_USE_MOCKS ||
+      process.env.EXPO_PUBLIC_FEATURE_USE_MOCKS ||
+      "true",
+  ).toLowerCase() !== "false";
+
+let forceMocks = false;
+let warnedApiFailure = false;
+
+function markApiFailure(error: unknown, context: string) {
+  forceMocks = true;
+  if (!warnedApiFailure) {
+    warnedApiFailure = true;
+    logger.warn(`${context} API unavailable, falling back to mocks`, error);
+  }
+}
+
+function shouldUseMocks() {
+  return USE_MOCKS || forceMocks;
+}
+
+async function fetchJson<T>(path: string): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new Error("EXPO_PUBLIC_API_BASE_URL is not set");
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    signal: controller.signal,
+  });
+  clearTimeout(timeout);
+  if (!res.ok) {
+    throw new Error(`API error ${res.status}`);
+  }
+  return (await res.json()) as T;
+}
+
+function coerceDate(value: unknown): Date {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+}
+
+function normalizeApiEpisodeWithShow(item: EpisodeWithShow): EpisodeWithShow {
+  return {
+    ...item,
+    episode: {
+      ...item.episode,
+      createdAt: coerceDate((item.episode as any).createdAt),
+      publishedAt: item.episode.publishedAt
+        ? coerceDate((item.episode as any).publishedAt)
+        : undefined,
+    },
+  };
+}
+
+function normalizeApiFeedItem(item: FeedItem): FeedItem {
+  if (item.type === "episode") {
+    return normalizeApiEpisodeWithShow(item);
+  }
+  return item;
+}
 
 // Domain types (minimal for this boundary)
 export interface Show {
@@ -168,6 +247,16 @@ function compareEpisodesForResume(a: Episode, b: Episode): number {
 
 // Feed API function
 export async function getFeed(feedType: FeedType): Promise<EpisodeWithShow[]> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: EpisodeWithShow[] }>(
+        `/v1/feeds?type=${feedType}`,
+      );
+      return (payload.data || []).map(normalizeApiEpisodeWithShow);
+    } catch (error) {
+      markApiFailure(error, "Feed");
+    }
+  }
   let mockShows: Show[] = [];
   let mockEpisodes: Episode[] = [];
 
@@ -635,6 +724,16 @@ function isShowEligibleForPublicFeeds(showId: string): boolean {
 
 // Mixed feed with specials
 export async function getMixedFeed(feedType: FeedType): Promise<FeedItem[]> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: FeedItem[] }>(
+        `/v1/mixed-feed?type=${feedType}`,
+      );
+      return (payload.data || []).map(normalizeApiFeedItem);
+    } catch (error) {
+      markApiFailure(error, "Mixed feed");
+    }
+  }
   const episodes = await getFeed(feedType);
   const specials: Special[] = [];
 
@@ -671,6 +770,16 @@ export async function getMixedFeed(feedType: FeedType): Promise<FeedItem[]> {
 export async function getShowById(
   showId: string,
 ): Promise<{ id: string; title: string } | null> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: Show | null }>(
+        `/v1/shows/${showId}`,
+      );
+      if (payload.data) return { id: payload.data.id, title: payload.data.title };
+    } catch (error) {
+      markApiFailure(error, "Show");
+    }
+  }
   const feeds: FeedType[] = ["new", "continue", "library"];
   for (const feed of feeds) {
     const data = await getFeed(feed);
@@ -694,6 +803,16 @@ export async function resolveShowById(
   let curatedShow: Show | null = null;
   // Check published first
   curatedShow = getCreatorStore().publishedShows[showId] || null;
+  if (!curatedShow && !shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: Show | null }>(
+        `/v1/shows/${showId}`,
+      );
+      curatedShow = payload.data || null;
+    } catch (error) {
+      markApiFailure(error, "Show");
+    }
+  }
   if (!curatedShow) {
     // Check feeds
     const feeds: FeedType[] = [
@@ -757,6 +876,16 @@ export async function resolveShowById(
 export async function getShowEpisodes(
   showId: string,
 ): Promise<EpisodeWithShow[]> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: EpisodeWithShow[] }>(
+        `/v1/shows/${showId}/episodes`,
+      );
+      return (payload.data || []).map(normalizeApiEpisodeWithShow);
+    } catch (error) {
+      markApiFailure(error, "Show episodes");
+    }
+  }
   // Get feed data for all shows (including user-created ones that may have become eligible)
   const [newData, libraryData, continueData] = await Promise.all([
     getFeed("new"),
@@ -821,11 +950,33 @@ export const mockTopics: Topic[] = [
   { id: "topic3", name: "Drama", slug: "drama" },
 ];
 
-export function getTopicById(topicId: string): Topic | undefined {
+export async function getTopicById(
+  topicId: string,
+): Promise<Topic | undefined> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: Topic | null }>(
+        `/v1/topics/${topicId}`,
+      );
+      return payload.data || undefined;
+    } catch (error) {
+      markApiFailure(error, "Topic");
+    }
+  }
   return mockTopics.find((topic) => topic.id === topicId);
 }
 
 export async function getShowsByTopic(topicId: string): Promise<Show[]> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: Show[] }>(
+        `/v1/topics/${topicId}/shows`,
+      );
+      return payload.data || [];
+    } catch (error) {
+      markApiFailure(error, "Topic shows");
+    }
+  }
   const showIds = new Set<string>();
   // Collect showIds from feeds
   for (const feedType of [
@@ -856,6 +1007,16 @@ export async function getShowsByTopic(topicId: string): Promise<Show[]> {
 export async function getEpisodesByTopic(
   topicId: string,
 ): Promise<EpisodeWithShow[]> {
+  if (!shouldUseMocks()) {
+    try {
+      const payload = await fetchJson<{ data: EpisodeWithShow[] }>(
+        `/v1/topics/${topicId}/episodes`,
+      );
+      return (payload.data || []).map(normalizeApiEpisodeWithShow);
+    } catch (error) {
+      markApiFailure(error, "Topic episodes");
+    }
+  }
   // Get all episodes from feeds
   const allEpisodes: EpisodeWithShow[] = [];
   for (const feedType of [

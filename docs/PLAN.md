@@ -1881,6 +1881,9 @@ This workstream runs alongside Phases 2–4 once Phase 1 contracts are stable.
 We track steps in chat as: ✅ Pass — Phase X Step NN. This log mirrors progress.
 
 - [x] Phase P0 — Step 01: Env vars strategy (app.config + EAS secrets), dev/stage/prod configs
+- [x] Phase P0 — Step 02: Feature flags to switch mocks → real API
+- [x] Phase P1 — Step 01: Sentry wired (errors + basic performance)
+- [x] Phase P1 — Step 02: Logging conventions (no PII)
 - [x] Phase 1 — Step 01: Feed boundary + multi-feed types wired to UI
 - [x] Phase 1 — Step 02: Show hub route + episode list by show
 - [x] Phase 1 — Step 03: Episode route + previous/up-next + S/E badge + next drop placeholder
