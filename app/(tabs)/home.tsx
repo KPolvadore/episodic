@@ -1,92 +1,181 @@
 import { router } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
+import {
+  getEpisodeDisplayNumber,
+  getEpisodeHookLabel,
+  getEpisodeVideoStatusLabel,
+} from "@/models/episode";
+import { isShowPublic } from "@/models/show";
 import { ShowVisibilityBadge } from "@/components/ShowVisibilityBadge";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { theme } from "@/constants/theme";
 import type { ShowCategory, ShowVisibility } from "@/types/show";
 
-type PlaceholderShow = {
+type PlaceholderFeedEpisode = {
   id: string;
-  title: string;
-  description: string;
-  category: ShowCategory;
-  visibility: ShowVisibility;
+  showId: string;
+  showTitle: string;
+  showDescription: string;
+  showCategory: ShowCategory;
+  showVisibility: ShowVisibility;
+  seasonNumber: number;
+  episodeNumber: number;
+  episodeTitle: string;
+  episodeDescription: string;
+  hookType: "none" | "question" | "poll" | "cliffhanger" | "challenge" | "reveal";
+  videoUrl: string | null;
+  publishedAt: string;
 };
 
-const placeholderShows: PlaceholderShow[] = [
+const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
   {
-    category: "documentary",
-    description: "A serialized look at neighborhood cooks building a weekend pop-up.",
-    id: "local-show-1",
-    title: "Kitchen After Hours",
-    visibility: "public",
+    episodeDescription: "The crew tests tonight's menu in one borrowed kitchen before opening weekend.",
+    episodeNumber: 1,
+    episodeTitle: "Pilot Service",
+    hookType: "question",
+    id: "local-episode-1",
+    seasonNumber: 1,
+    showCategory: "documentary",
+    showDescription: "A serialized look at neighborhood cooks building a weekend pop-up.",
+    showId: "local-show-1",
+    showTitle: "Kitchen After Hours",
+    showVisibility: "public",
+    videoUrl: null,
+    publishedAt: "2026-05-24T19:30:00.000Z",
   },
   {
-    category: "music",
-    description: "A rehearsal diary following a band as they write their first EP.",
-    id: "local-show-2",
-    title: "Basement Sessions",
-    visibility: "public",
+    episodeDescription: "A new bassline changes the whole song minutes before their first live rehearsal.",
+    episodeNumber: 2,
+    episodeTitle: "Rewrite at Midnight",
+    hookType: "cliffhanger",
+    id: "local-episode-2",
+    seasonNumber: 1,
+    showCategory: "music",
+    showDescription: "A rehearsal diary following a band as they write their first EP.",
+    showId: "local-show-2",
+    showTitle: "Basement Sessions",
+    showVisibility: "public",
+    videoUrl: "https://example.com/basement-sessions-s1e2.mp4",
+    publishedAt: "2026-05-26T15:45:00.000Z",
   },
   {
-    category: "drama",
-    description: "A private concept show tracking scenes for a short-form mystery.",
-    id: "local-show-3",
-    title: "The Last Clue",
-    visibility: "private",
+    episodeDescription: "A witness finally speaks, but the recording ends before the final name is said.",
+    episodeNumber: 3,
+    episodeTitle: "The Missing Name",
+    hookType: "reveal",
+    id: "local-episode-3",
+    seasonNumber: 1,
+    showCategory: "drama",
+    showDescription: "A private concept show tracking scenes for a short-form mystery.",
+    showId: "local-show-3",
+    showTitle: "The Last Clue",
+    showVisibility: "private",
+    videoUrl: null,
+    publishedAt: "2026-05-26T18:00:00.000Z",
   },
 ];
+
+const publicFeedEpisodes = [...placeholderFeedEpisodes]
+  .filter((item) => isShowPublic(item.showVisibility))
+  .sort(
+    (left, right) =>
+      new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime(),
+  );
 
 export default function HomeScreen() {
   return (
     <ThemedView variant="screen" style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <ThemedText variant="title">Shows</ThemedText>
+          <ThemedText variant="title">Home Feed</ThemedText>
           <ThemedText variant="body" style={styles.headerCopy}>
-            Follow serialized stories and come back for what happens next.
+            Follow what happens next.
           </ThemedText>
         </View>
 
         <View style={styles.list}>
-          {placeholderShows.map((show) => (
-            <Pressable
-              key={show.id}
-              onPress={() => {
-                router.push({
-                  pathname: "/shows/[showId]",
-                  params: {
-                    category: show.category,
-                    description: show.description,
-                    showId: show.id,
-                    title: show.title,
-                    visibility: show.visibility,
-                  },
-                });
-              }}
-            >
-              <ThemedView variant="card" style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <ThemedText variant="subtitle" style={styles.cardTitle}>
-                    {show.title}
+          {publicFeedEpisodes.map((item) => (
+            <ThemedView key={item.id} variant="card" style={styles.card}>
+              <Pressable
+                onPress={() => {
+                  router.push({
+                    pathname: "/episodes/[episodeId]",
+                    params: {
+                      description: item.episodeDescription,
+                      episodeId: item.id,
+                      episodeNumber: String(item.episodeNumber),
+                      hookType: item.hookType,
+                      seasonNumber: String(item.seasonNumber),
+                      showCategory: item.showCategory,
+                      showDescription: item.showDescription,
+                      showId: item.showId,
+                      showTitle: item.showTitle,
+                      showVisibility: item.showVisibility,
+                      title: item.episodeTitle,
+                      videoUrl: item.videoUrl ?? undefined,
+                    },
+                  });
+                }}
+                style={styles.episodePressArea}
+              >
+                <ThemedText variant="caption" style={styles.seriesLabel}>
+                  Episode from
+                </ThemedText>
+
+                <View style={styles.showRow}>
+                  <ThemedText variant="subtitle" style={styles.showTitle}>
+                    {item.showTitle}
                   </ThemedText>
-                  <ShowVisibilityBadge visibility={show.visibility} />
+                  <ShowVisibilityBadge visibility={item.showVisibility} />
+                </View>
+
+                <View style={styles.cardHeader}>
+                  <ThemedText variant="caption" style={styles.episodeNumber}>
+                    Latest episode · {getEpisodeDisplayNumber(item)}
+                  </ThemedText>
+                  <ThemedText variant="subtitle" style={styles.cardTitle}>
+                    {item.episodeTitle}
+                  </ThemedText>
                 </View>
 
                 <ThemedText variant="body" style={styles.description}>
-                  {show.description}
+                  {item.episodeDescription}
                 </ThemedText>
 
                 <View style={styles.metaRow}>
-                  <ThemedText variant="caption" style={styles.category}>
-                    {show.category}
-                  </ThemedText>
-                  <ThemedText variant="caption">Episodes coming soon</ThemedText>
+                  <ThemedText variant="caption">{getEpisodeHookLabel(item.hookType)}</ThemedText>
+                  <ThemedText variant="caption">{getEpisodeVideoStatusLabel(item.videoUrl)}</ThemedText>
                 </View>
-              </ThemedView>
-            </Pressable>
+
+                <View style={styles.metaRow}>
+                  <ThemedText variant="caption" style={styles.category}>
+                    {item.showCategory}
+                  </ThemedText>
+                </View>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  router.push({
+                    pathname: "/shows/[showId]",
+                    params: {
+                      category: item.showCategory,
+                      description: item.showDescription,
+                      showId: item.showId,
+                      title: item.showTitle,
+                      visibility: item.showVisibility,
+                    },
+                  });
+                }}
+                style={styles.showActionButton}
+              >
+                <ThemedText variant="body" style={styles.showActionText}>
+                  View Show
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
           ))}
         </View>
       </ScrollView>
@@ -99,8 +188,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   cardHeader: {
-    alignItems: "flex-start",
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   cardTitle: {
     color: theme.colors.text.primary,
@@ -116,6 +204,9 @@ const styles = StyleSheet.create({
   description: {
     color: theme.colors.text.secondary,
   },
+  episodePressArea: {
+    gap: theme.spacing.md,
+  },
   header: {
     gap: theme.spacing.sm,
   },
@@ -126,7 +217,35 @@ const styles = StyleSheet.create({
     gap: theme.spacing.lg,
   },
   metaRow: {
+    flexDirection: "row",
     gap: theme.spacing.xs,
+    justifyContent: "space-between",
+  },
+  episodeNumber: {
+    color: theme.colors.brand.secondary,
+  },
+  seriesLabel: {
+    color: theme.colors.text.muted,
+  },
+  showRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  showActionButton: {
+    alignItems: "center",
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  showActionText: {
+    color: theme.colors.brand.secondary,
+    fontWeight: theme.typography.weight.bold,
+  },
+  showTitle: {
+    color: theme.colors.text.primary,
   },
   screen: {
     paddingTop: theme.spacing.xl,

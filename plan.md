@@ -19,8 +19,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 2 — Episodes  
-Current Step: Step 2.7 — Add Video Placeholder Support  
+Current Phase: Phase 3 — Feed  
+Current Step: Step 3.5 — Navigate from Feed to Show  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
@@ -39,11 +39,13 @@ Goal: Make Shows the primary product object.
 
 ### Phase 2 — Episodes
 
-Status: In Progress
+Status: Complete
 
 Goal: Add ordered Episodes inside Shows.
 
 ### Phase 3 — Feed
+
+Status: In Progress
 
 Goal: Build a feed that surfaces Episodes while preserving Show context.
 
@@ -1270,7 +1272,7 @@ Findings:
 
 ### Step 2.7 — Add Video Placeholder Support
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Standardize UI-only video and thumbnail placeholder support across Episode-related screens.
@@ -1346,36 +1348,61 @@ Findings:
 
 ### Step 3.1 — Create Home Feed Layout
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Create the base Home feed layout.
+Create the initial Home feed layout shell that surfaces Episodes while preserving Show context.
 
 Acceptance Criteria:
-- Home feed route renders.
-- Feed layout supports Episode cards.
-- Empty and loading states exist.
-- Feed remains Episode-focused while preserving Show context.
+- Home tab displays a feed-style layout.
+- Feed items represent Episodes.
+- Each feed item preserves Show context.
+- Feed items display season/episode number, Episode title, Show title, and a short description.
+- Feed items display hook label and video status labels.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- Temporary feed items are local to `app/(tabs)/home.tsx`.
+- No shared mock data layer is created.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No feed algorithm is added.
+- No packages are installed.
 
 Files Allowed:
-- `app/(tabs)/index.tsx`
-- `src/features/feed/`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
-- Ranking algorithm
-- Follow filtering
-- Recommendations
-- Ads
+- Real feed data
+- Feed algorithm
+- Infinite scroll
+- Pull to refresh
+- Search
+- Filters
+- Likes
+- Comments
+- Sharing
+- Notifications
+- Backend, database, Supabase, service, repository, auth, ownership, persistence
 
 Verification:
-- Run available checks.
-- Launch app and inspect Home feed.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `app/(tabs)/home.tsx` feed layout.
 - Update `plan.md`.
+
+Findings:
+- Reworked Home from a Show list into a UI-only Episode feed layout while preserving Show context on every card.
+- Added a Home feed header and short product framing line: `Follow what happens next.`
+- Replaced local placeholder Show list items with local placeholder Episode feed items stored only in `app/(tabs)/home.tsx`.
+- Each feed card now displays Show title, Show visibility, season/episode display number, Episode title, Episode description, hook label, video status label, and Show category.
+- Reused Episode model helpers for consistent display labels: `getEpisodeDisplayNumber`, `getEpisodeHookLabel`, and `getEpisodeVideoStatusLabel`.
+- Preserved sensible navigation by keeping card press behavior routed to existing Show detail.
+- No shared mock data layer, backend, database, Supabase, service, repository, auth, ownership, persistence, feed algorithm, or package installation was added.
+- Verification performed: ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ### Step 3.2 — Display Recent Public Episodes
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Show recent public Episodes in the Home feed.
@@ -1387,9 +1414,7 @@ Acceptance Criteria:
 - Visibility rules are reused.
 
 Files Allowed:
-- `src/features/feed/`
-- `src/features/episodes/`
-- `src/features/shows/`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
@@ -1399,13 +1424,24 @@ Out of Scope:
 - Recommendations
 
 Verification:
-- Run available checks.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
 - Confirm private Show Episodes do not appear.
 - Update `plan.md`.
 
+Findings:
+- Updated temporary Home feed items in `app/(tabs)/home.tsx` to include local `publishedAt` values for recency ordering.
+- Confirmed and enforced public-only feed behavior by filtering temporary items with `isShowPublic` from `models/show.ts`.
+- Kept a temporary private Episode item in local feed source data, but excluded it from the rendered public feed through filtering.
+- Sorted displayed temporary feed items newest-first by `publishedAt`.
+- Preserved existing Step 3.1 feed card layout and existing navigation behavior while keeping Show context visible.
+- Continued to use Episode helpers for numbering, hook labels, and video status labels.
+- No shared mock data layer, backend, database, Supabase, service, repository, auth, ownership, persistence, package installation, or real feed algorithm was added.
+- Verification performed: ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
+
 ### Step 3.3 — Preserve Show Context on Feed Cards
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Ensure every feed Episode card clearly identifies its Show.
@@ -1413,11 +1449,13 @@ Ensure every feed Episode card clearly identifies its Show.
 Acceptance Criteria:
 - Feed cards display Show title and Episode numbering.
 - Users can understand the serialized context without opening detail screens.
-- Card component remains reusable.
+- Show context remains visually clear and parent-first on each card.
+- Existing public-only filtering remains intact.
+- Existing newest-first ordering remains intact.
+- Existing navigation behavior is preserved.
 
 Files Allowed:
-- `src/features/feed/components/`
-- `src/features/feed/`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
@@ -1425,15 +1463,30 @@ Out of Scope:
 - Polls
 - Recommendations
 - Creator profiles
+- New navigation behavior
 
 Verification:
-- Run available checks.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
 - Inspect feed cards for Show context.
+- Confirm public-only filtering remains intact.
+- Confirm newest-first ordering remains intact.
 - Update `plan.md`.
+
+Findings:
+- Refined Home feed card hierarchy to reinforce Show-as-parent context while keeping Episode as the current installment.
+- Added a small series-oriented label (`Episode from`) to each feed card.
+- Elevated Show title prominence and kept Show visibility badge next to Show identity.
+- Grouped Episode numbering with context (`Latest episode · S#:E#`) directly above Episode title for clearer series continuity.
+- Preserved existing public-only filtering via `isShowPublic` and newest-first ordering by `publishedAt`.
+- Preserved existing card press navigation behavior without adding new navigation paths.
+- Temporary feed items remain local to `app/(tabs)/home.tsx`.
+- No shared mock data layer, backend, database, Supabase, service, repository, auth, ownership, persistence, package installation, or real feed algorithm was added.
+- Verification performed: ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ### Step 3.4 — Navigate from Feed to Episode
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Allow feed users to open an Episode detail screen.
@@ -1441,11 +1494,14 @@ Allow feed users to open an Episode detail screen.
 Acceptance Criteria:
 - Tapping an Episode card opens Episode detail.
 - Navigation passes the correct Episode identity.
-- Missing Episode states remain handled.
+- Episode detail receives temporary Episode and Show context route params.
+- Existing public-only filtering remains intact.
+- Existing newest-first ordering remains intact.
+- Existing Show context on feed cards remains visible.
 
 Files Allowed:
-- `src/features/feed/`
-- `app/(tabs)/index.tsx`
+- `app/(tabs)/home.tsx`
+- `app/episodes/[episodeId].tsx` (only if minimal compatibility fix is required)
 - `plan.md`
 
 Out of Scope:
@@ -1455,13 +1511,28 @@ Out of Scope:
 - Poll voting
 
 Verification:
-- Run available checks.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
 - Navigate from feed to Episode detail.
+- Confirm Episode detail renders from feed params.
+- Confirm public-only filtering remains intact.
+- Confirm newest-first ordering remains intact.
 - Update `plan.md`.
+
+Findings:
+- Updated Home feed card press behavior to navigate to the existing Episode detail route (`/episodes/[episodeId]`).
+- Passed temporary Episode params from feed items: `episodeId`, `title`, `description`, `seasonNumber`, `episodeNumber`, `hookType`, and `videoUrl`.
+- Passed temporary parent Show params from feed items: `showId`, `showTitle`, `showDescription`, `showCategory`, and `showVisibility`, aligned with existing Episode detail behavior.
+- Kept temporary feed items local to `app/(tabs)/home.tsx`, including Show context values used for Episode detail.
+- Preserved existing public-only filtering (`isShowPublic`) and newest-first ordering (`publishedAt` sort).
+- Preserved existing feed card Show-context UI and avoided adding feed-to-Show navigation behavior in this step.
+- No Episode detail compatibility fix was required in `app/episodes/[episodeId].tsx`.
+- No shared mock data layer, backend, database, Supabase, service, repository, auth, ownership, persistence, package installation, or feed algorithm was added.
+- Verification performed: ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ### Step 3.5 — Navigate from Feed to Show
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
 Allow feed users to open the parent Show from a feed item.
@@ -1472,8 +1543,8 @@ Acceptance Criteria:
 - Episode navigation and Show navigation do not conflict.
 
 Files Allowed:
-- `src/features/feed/`
-- `app/(tabs)/index.tsx`
+- `app/(tabs)/home.tsx`
+- `app/shows/[showId].tsx` (only if minimal compatibility fix is required)
 - `plan.md`
 
 Out of Scope:
@@ -1483,9 +1554,25 @@ Out of Scope:
 - Continue watching
 
 Verification:
-- Run available checks.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
 - Navigate from feed to Show detail.
+- Confirm feed-to-Episode navigation remains intact.
+- Confirm Show detail renders from feed params.
+- Confirm public-only filtering remains intact.
+- Confirm newest-first ordering remains intact.
 - Update `plan.md`.
+
+Findings:
+- Added a clear secondary `View Show` action to each Home feed card that navigates to the existing Show detail route (`/shows/[showId]`).
+- Kept feed-to-Episode behavior intact by preserving Episode-detail navigation as the primary tap area on each card.
+- Passed temporary Show params to Show detail from feed items: `showId`, `title`, `description`, `category`, and `visibility`.
+- Preserved Show context UI on cards, including Show title, visibility badge, category, Episode numbering/title, hook label, and video status.
+- Preserved existing public-only filtering (`isShowPublic`) and newest-first ordering (`publishedAt` sort).
+- Kept temporary feed items local to `app/(tabs)/home.tsx`.
+- No Show detail compatibility fix was required in `app/shows/[showId].tsx`.
+- No shared mock data layer, backend, database, Supabase, service, repository, auth, ownership, persistence, package installation, or feed algorithm was added.
+- Verification performed: ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ## Phase 4 — Follow Shows
 
@@ -2258,6 +2345,21 @@ Verification:
 | 2026-05-26 | Phase 2 — Episodes | Step 2.6 — Add Season and Episode Numbering | Ready for Review | Standardized UI-only Episode numbering review across Show detail, Episode detail, and Create Episode by using shared display and validation helpers with safe local defaults. | `plan.md`, `app/episodes/[episodeId].tsx` | Inspected Episode numbering surfaces; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 | 2026-05-26 | Phase 2 — Episodes | Step 2.6 — Add Season and Episode Numbering | Complete | Product owner reviewed and passed UI-only season and episode numbering. Step 2.7 was started to standardize video placeholder support. | `plan.md` | Confirmed Step 2.6 findings were recorded and no Episode persistence, real data reordering, shared mock data, backend, database, Supabase, service, repository, auth, ownership, Edit Episode, upload, or playback logic was added. |
 | 2026-05-26 | Phase 2 — Episodes | Step 2.7 — Add Video Placeholder Support | Ready for Review | Standardized UI-only video placeholder status labels across Show detail, Episode detail, and Create Episode, with local video/thumbnail messaging that avoids implying upload or playback exists. | `plan.md`, `models/episode.ts`, `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx`, `app/shows/[showId]/episodes/create.tsx` | Inspected video placeholder surfaces; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.7 — Add Video Placeholder Support | Complete | Product owner reviewed and passed UI-only video placeholder support. Phase 2 was marked complete and Phase 3 was started with Home feed layout work. | `plan.md` | Confirmed Step 2.7 findings were recorded and no real upload/playback, backend, database, Supabase, service, repository, auth, ownership, or persistence logic was added. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.1 — Create Home Feed Layout | In Progress | Started Home feed layout implementation to shift Home from a Show list to Episode feed cards while preserving Show context. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed temporary feed items are local to `app/(tabs)/home.tsx`; pending verification checks for review readiness. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.1 — Create Home Feed Layout | Ready for Review | Reworked Home into a UI-only Episode feed shell with per-card Show context, season/episode numbering, hook labels, video status labels, and existing Show-detail navigation. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.1 — Create Home Feed Layout | Complete | Product owner reviewed and passed the Home feed layout shell. Step 3.2 was started to display recent public Episodes. | `plan.md` | Confirmed Step 3.1 findings were recorded and no backend, database, Supabase, service, repository, auth, ownership, persistence, or feed algorithm logic was added. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.2 — Display Recent Public Episodes | In Progress | Started refining Home feed data shape for recency and public-only Episode display using temporary local feed items. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed temporary feed items remain local to `app/(tabs)/home.tsx`; pending final verification checks. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.2 — Display Recent Public Episodes | Ready for Review | Added local `publishedAt` timestamps, filtered temporary feed items to public Shows only, and sorted displayed Episodes newest-first while preserving existing card layout and navigation behavior. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.2 — Display Recent Public Episodes | Complete | Product owner reviewed and passed recent public Episode feed display. Step 3.3 was started to strengthen Show context on feed cards. | `plan.md` | Confirmed Step 3.2 findings were recorded and no backend, database, Supabase, service, repository, auth, ownership, persistence, or feed algorithm logic was added. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.3 — Preserve Show Context on Feed Cards | In Progress | Started refining feed card hierarchy and copy to make Show context parent-first for each Episode card while preserving current filtering, ordering, and navigation behavior. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed temporary feed items remain local and public-only/newest-first behavior is preserved; pending final verification checks. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.3 — Preserve Show Context on Feed Cards | Ready for Review | Added series-oriented card labeling and stronger Show-first visual hierarchy while keeping Episode numbering/title, category, visibility, hook, and video status context intact. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.3 — Preserve Show Context on Feed Cards | Complete | Product owner reviewed and passed feed-card Show-context refinements. Step 3.4 was started to support feed-to-Episode navigation. | `plan.md` | Confirmed Step 3.3 findings were recorded and no backend, database, Supabase, service, repository, auth, ownership, persistence, or feed algorithm logic was added. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.4 — Navigate from Feed to Episode | In Progress | Started Home feed navigation update to open Episode detail with temporary Episode and Show params while preserving existing feed filtering and ordering. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed temporary feed items remain local and existing feed behavior stays intact; pending final verification checks. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.4 — Navigate from Feed to Episode | Ready for Review | Wired feed cards to Episode detail and passed temporary Episode/Show route params aligned with existing Episode detail rendering. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.4 — Navigate from Feed to Episode | Complete | Product owner reviewed and passed feed-to-Episode navigation. Step 3.5 was started to add feed-to-Show navigation. | `plan.md` | Confirmed Step 3.4 findings were recorded and no backend, database, Supabase, service, repository, auth, ownership, persistence, or feed algorithm logic was added. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.5 — Navigate from Feed to Show | In Progress | Started adding a secondary Show-detail action on Home feed cards while preserving existing Episode-detail primary navigation and feed behavior. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed temporary feed items remain local and public-only/newest-first behavior remains intact; pending final verification checks. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.5 — Navigate from Feed to Show | Ready for Review | Added `View Show` action per feed card and passed temporary Show route params to existing Show detail while keeping feed-to-Episode navigation intact. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -2288,6 +2390,11 @@ Verification:
 - Step 2.5 added a UI-only Create Episode form. It does not persist Episodes, update the Show detail Episode list, add Edit Episode, perform real video upload/playback, or add backend, database, Supabase, service, repository, auth, or ownership logic.
 - Step 2.6 standardized UI-only season and episode numbering display and validation. It does not persist Episode values, reorder real data, add shared mock data, or add backend, database, Supabase, service, repository, auth, ownership, Edit Episode, upload, or playback logic.
 - Step 2.7 standardized UI-only video and thumbnail placeholder messaging. It does not add real upload, playback, Mux, Supabase storage, external video services, persistence, backend, database, Supabase, service, repository, auth, ownership, shared mock data, or Edit Episode logic.
+- Step 3.1 reworked Home into a UI-only Episode feed shell with local temporary feed items and preserved Show context. It does not add real feed data, ranking, backend, database, Supabase, service, repository, auth, ownership, persistence, or shared mock data.
+- Step 3.2 refines Home feed display with local recency timestamps, public-only filtering, and newest-first ordering for temporary Episodes. It does not add real feed data sources, ranking algorithms, backend, database, Supabase, service, repository, auth, ownership, persistence, or shared mock data.
+- Step 3.3 strengthens Show context on Home feed cards through UI hierarchy and series-oriented labeling while preserving existing temporary public-only filtering, newest-first ordering, and navigation behavior.
+- Step 3.4 adds feed-to-Episode navigation using temporary route params aligned with existing Episode detail behavior, while preserving public-only filtering, newest-first ordering, and local temporary feed data.
+- Step 3.5 adds feed-to-Show navigation with a secondary card action while preserving existing feed-to-Episode behavior, public-only filtering, newest-first ordering, and local temporary feed data.
 
 ## 9. Out of Scope Until Later
 
@@ -2304,4 +2411,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 2.7 — Add Video Placeholder Support is Ready for Review. After product owner approval, Step 2.7 can be marked Complete and the next approved Phase 2 step can begin.
+Step 3.5 — Navigate from Feed to Show is Ready for Review. After product owner approval, Step 3.5 can be marked Complete and the next approved Feed step can begin.
