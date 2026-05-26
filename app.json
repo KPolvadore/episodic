@@ -10,9 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.episodic-mobile"
+      "bundleIdentifier": "com.anonymous.episodic-mobile",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,12 +45,17 @@
             "backgroundColor": "#000000"
           }
         }
-      ],
-      "@sentry/react-native/expo"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "19a42135-0093-41cf-b918-6372bfa7791a"
+      }
     }
   }
 }
