@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
@@ -11,6 +12,7 @@ import {
   isValidEpisodeNumber,
 } from "@/models/episode";
 import type { Episode, EpisodeHookType } from "@/types/episode";
+import type { EpisodePoll, EpisodePollOption } from "@/types/episodePoll";
 
 type EpisodeDetailParams = {
   description?: string;
@@ -63,6 +65,10 @@ function getHookTypeParam(value: string | string[] | undefined) {
 
 export default function EpisodeDetailScreen() {
   const params = useLocalSearchParams<EpisodeDetailParams>();
+  const [selectedPollOptionId, setSelectedPollOptionId] = useState<
+    EpisodePollOption["id"] | null
+  >(null);
+  const [hasSubmittedLocalVote, setHasSubmittedLocalVote] = useState(false);
 
   const title = getParamValue(params.title) ?? "Untitled Episode";
   const description =
@@ -83,6 +89,44 @@ export default function EpisodeDetailScreen() {
   );
   const hookType = getHookTypeParam(params.hookType);
   const videoStatusLabel = getEpisodeVideoStatusLabel(videoUrl);
+  const localPollOptions: EpisodePollOption[] = [
+    {
+      id: `${showId}-${params.episodeId ?? "episode"}-poll-option-1`,
+      label: "Reveal a secret clue in the final scene",
+      order: 1,
+    },
+    {
+      id: `${showId}-${params.episodeId ?? "episode"}-poll-option-2`,
+      label: "End on a cliffhanger with a surprise visitor",
+      order: 2,
+    },
+  ];
+  const localEpisodePoll: EpisodePoll = {
+    id: `${showId}-${params.episodeId ?? "episode"}-poll`,
+    episodeId: params.episodeId ?? "episode-detail-local",
+    question: "What should happen next in this Show?",
+    options: localPollOptions,
+    isActive: true,
+    createdAt: "2026-05-26T00:00:00.000Z",
+    updatedAt: "2026-05-26T00:00:00.000Z",
+  };
+  const canSubmitVote =
+    localEpisodePoll.isActive &&
+    !hasSubmittedLocalVote &&
+    selectedPollOptionId !== null;
+  const selectedPollOptionLabel =
+    localEpisodePoll.options.find((option) => option.id === selectedPollOptionId)
+      ?.label ?? null;
+  const localResultVoteCounts: Record<EpisodePollOption["id"], number> = {
+    [localPollOptions[0].id]:
+      selectedPollOptionId === localPollOptions[0].id ? 7 : 6,
+    [localPollOptions[1].id]:
+      selectedPollOptionId === localPollOptions[1].id ? 7 : 6,
+  };
+  const totalLocalResultVotes = Object.values(localResultVoteCounts).reduce(
+    (totalVotes, voteCount) => totalVotes + voteCount,
+    0,
+  );
 
   return (
     <ThemedView variant="screen" style={styles.screen}>
@@ -120,6 +164,116 @@ export default function EpisodeDetailScreen() {
               {videoStatusLabel}
             </ThemedText>
           </View>
+        </ThemedView>
+
+        <ThemedView variant="card" style={styles.pollCard}>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Episode Poll
+          </ThemedText>
+          <ThemedText variant="subtitle">{localEpisodePoll.question}</ThemedText>
+          <ThemedText variant="caption" style={styles.pollStatus}>
+            Status: {localEpisodePoll.isActive ? "Active" : "Inactive"}
+          </ThemedText>
+          <View style={styles.pollOptions}>
+            {localEpisodePoll.options.map((option) => (
+              <Pressable
+                accessibilityState={{
+                  disabled: hasSubmittedLocalVote || !localEpisodePoll.isActive,
+                  selected: selectedPollOptionId === option.id,
+                }}
+                disabled={hasSubmittedLocalVote || !localEpisodePoll.isActive}
+                key={option.id}
+                onPress={() => setSelectedPollOptionId(option.id)}
+                style={[
+                  styles.pollOption,
+                  selectedPollOptionId === option.id
+                    ? styles.selectedPollOption
+                    : null,
+                  hasSubmittedLocalVote || !localEpisodePoll.isActive
+                    ? styles.disabledPollOption
+                    : null,
+                ]}
+              >
+                <ThemedText
+                  variant="body"
+                  style={
+                    selectedPollOptionId === option.id
+                      ? styles.selectedPollOptionText
+                      : undefined
+                  }
+                >
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            accessibilityState={{ disabled: !canSubmitVote }}
+            disabled={!canSubmitVote}
+            onPress={() => {
+              if (!canSubmitVote) {
+                return;
+              }
+
+              setHasSubmittedLocalVote(true);
+            }}
+            style={[
+              styles.voteButton,
+              !canSubmitVote ? styles.disabledVoteButton : null,
+            ]}
+          >
+            <ThemedText variant="body" style={styles.voteButtonText}>
+              {hasSubmittedLocalVote ? "Vote Submitted (Local)" : "Submit Vote"}
+            </ThemedText>
+          </Pressable>
+          {hasSubmittedLocalVote && selectedPollOptionLabel ? (
+            <ThemedText variant="caption" style={styles.pollStatus}>
+              Your local vote is locked on: {selectedPollOptionLabel}
+            </ThemedText>
+          ) : null}
+          {hasSubmittedLocalVote ? (
+            <View style={styles.resultsSection}>
+              <ThemedText variant="caption" style={styles.mutedText}>
+                Local Demo Results
+              </ThemedText>
+              {localEpisodePoll.options.map((option) => {
+                const voteCount = localResultVoteCounts[option.id] ?? 0;
+                const votePercentage =
+                  totalLocalResultVotes > 0
+                    ? Math.round((voteCount / totalLocalResultVotes) * 100)
+                    : 0;
+                const isSelectedOption = selectedPollOptionId === option.id;
+
+                return (
+                  <View key={`result-${option.id}`} style={styles.resultRow}>
+                    <View style={styles.resultRowHeader}>
+                      <ThemedText variant="body">
+                        {option.label}
+                        {isSelectedOption ? " (Your vote)" : ""}
+                      </ThemedText>
+                      <ThemedText variant="caption" style={styles.pollStatus}>
+                        {voteCount} votes · {votePercentage}%
+                      </ThemedText>
+                    </View>
+                    <View style={styles.resultTrack}>
+                      <View
+                        style={[
+                          styles.resultFill,
+                          { width: `${votePercentage}%` },
+                          isSelectedOption ? styles.selectedResultFill : null,
+                        ]}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Voting is local to this screen for now and will be connected to
+            account support later. Results shown here are temporary local demo
+            values only.
+          </ThemedText>
         </ThemedView>
 
         <ThemedView variant="card" style={styles.showCard}>
@@ -184,6 +338,65 @@ const styles = StyleSheet.create({
   mutedText: {
     color: theme.colors.text.muted,
   },
+  pollCard: {
+    gap: theme.spacing.md,
+  },
+  pollOption: {
+    backgroundColor: theme.colors.background.secondary,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  disabledPollOption: {
+    opacity: 0.65,
+  },
+  pollOptions: {
+    gap: theme.spacing.sm,
+  },
+  pollStatus: {
+    color: theme.colors.brand.secondary,
+    fontWeight: theme.typography.weight.medium,
+  },
+  selectedPollOption: {
+    borderColor: theme.colors.brand.primary,
+    borderWidth: 2,
+  },
+  selectedPollOptionText: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.weight.medium,
+  },
+  resultFill: {
+    backgroundColor: theme.colors.brand.secondary,
+    borderRadius: theme.radius.pill,
+    height: "100%",
+  },
+  resultRow: {
+    gap: theme.spacing.xs,
+  },
+  resultRowHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  resultsSection: {
+    gap: theme.spacing.sm,
+  },
+  resultTrack: {
+    backgroundColor: theme.colors.background.secondary,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    height: 10,
+    overflow: "hidden",
+  },
+  selectedResultFill: {
+    backgroundColor: theme.colors.brand.primary,
+  },
+  disabledVoteButton: {
+    opacity: 0.5,
+  },
   screen: {
     paddingTop: theme.spacing.xl,
   },
@@ -199,6 +412,16 @@ const styles = StyleSheet.create({
   },
   showCard: {
     gap: theme.spacing.md,
+  },
+  voteButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.brand.primary,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  voteButtonText: {
+    fontWeight: theme.typography.weight.bold,
   },
   videoPlaceholder: {
     alignItems: "center",

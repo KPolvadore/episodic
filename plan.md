@@ -19,8 +19,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 4 — Follow Shows  
-Current Step: Step 4.5 — Add Followed Shows Feed Filter  
+Current Phase: Phase 5 — Audience Interaction  
+Current Step: Step 5.5 — Show Poll Results  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
@@ -51,11 +51,13 @@ Goal: Build a feed that surfaces Episodes while preserving Show context.
 
 ### Phase 4 — Follow Shows
 
-Status: In Progress
+Status: Complete
 
 Goal: Let users follow Shows and build a Show-based social graph.
 
 ### Phase 5 — Audience Interaction
+
+Status: In Progress
 
 Goal: Let viewers influence what happens next through polls and choices.
 
@@ -1803,7 +1805,7 @@ Findings:
 
 ### Step 4.5 — Add Followed Shows Feed Filter
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Allow feed users to filter Episodes to followed Shows.
@@ -1873,7 +1875,7 @@ Findings:
 
 ### Step 5.1 — Define Episode Poll Types
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Define types for Episode polls and viewer choices.
@@ -1884,8 +1886,7 @@ Acceptance Criteria:
 - Types do not assume a final backend.
 
 Files Allowed:
-- `src/types/poll.ts`
-- `src/features/polls/`
+- `types/episodePoll.ts`
 - `plan.md`
 
 Out of Scope:
@@ -1899,9 +1900,17 @@ Verification:
 - Confirm exports resolve.
 - Update `plan.md`.
 
+Findings:
+- Added shared poll types in `types/episodePoll.ts`: `EpisodePollId`, `EpisodePollOptionId`, `EpisodePollVoteId`, `EpisodePollOption`, `EpisodePoll`, and `EpisodePollVote`.
+- Reused existing shared IDs from prior phases: `EpisodeId` from `types/episode.ts`, and `UserId`/`ISODateString` from `types/show.ts`.
+- Kept the poll model app-facing and backend-agnostic with string IDs and no service, repository, Supabase, database, or auth assumptions.
+- Added create/update input types for future form work: `CreateEpisodePollInput`, `UpdateEpisodePollInput`, and `CreateEpisodePollVoteInput`.
+- `EpisodePoll` references Episodes through `episodeId`, and vote types reference both poll (`pollId`) and user (`userId`).
+- Added no UI, voting behavior, mock poll records, persistence, navigation, or Episode screen changes.
+
 ### Step 5.2 — Add Poll Creation Support
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Allow creators to add a poll to an Episode.
@@ -1913,8 +1922,7 @@ Acceptance Criteria:
 - Validation prevents invalid poll states.
 
 Files Allowed:
-- `src/features/polls/`
-- `src/features/episodes/`
+- `app/shows/[showId]/episodes/create.tsx`
 - `plan.md`
 
 Out of Scope:
@@ -1928,9 +1936,18 @@ Verification:
 - Create an Episode poll manually.
 - Update `plan.md`.
 
+Findings:
+- Updated `app/shows/[showId]/episodes/create.tsx` to add a UI-only poll draft section during Episode creation.
+- Added local poll state for question, option labels, and active/inactive status with no persistence.
+- Added local validation and helper text so poll question is required when options are entered and at least two non-empty options are required for a valid poll draft.
+- Added a simple optional extra option flow using a local add-option action.
+- Used `CreateEpisodePollInput` and `EpisodePollOption` types from `types/episodePoll.ts` for app-facing poll draft typing.
+- Added clear UI copy that poll saving and viewer voting will be connected later.
+- Did not add poll display on Episode detail, voting behavior, poll result behavior, backend/database/Supabase/service/repository/auth/ownership logic, persistence, or mock poll data.
+
 ### Step 5.3 — Display Poll on Episode Detail
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Show an Episode poll to viewers.
@@ -1941,8 +1958,6 @@ Acceptance Criteria:
 - Poll display does not allow duplicate voting yet unless Step 5.4 is complete.
 
 Files Allowed:
-- `src/features/polls/`
-- `src/features/episodes/`
 - `app/episodes/[episodeId].tsx`
 - `plan.md`
 
@@ -1957,9 +1972,17 @@ Verification:
 - Inspect Episode detail with and without a poll.
 - Update `plan.md`.
 
+Findings:
+- Updated `app/episodes/[episodeId].tsx` to add a UI-only Episode poll section with local temporary poll data.
+- Kept temporary poll data local to `app/episodes/[episodeId].tsx` and did not create a shared mock data layer.
+- Used shared `EpisodePoll` and `EpisodePollOption` types from `types/episodePoll.ts` for the local poll display shape.
+- Displayed poll question, poll status (active/inactive), and at least two poll options in a simple card section on Episode detail.
+- Added helper text clearly stating voting and results will be connected later.
+- Did not add voting behavior, poll results behavior, Create Episode poll-state connection, persistence, backend/database/Supabase/service/repository/auth/ownership logic, or package installation.
+
 ### Step 5.4 — Allow One Vote Per User
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Allow each user to vote once per Episode poll.
@@ -1971,7 +1994,6 @@ Acceptance Criteria:
 - Anonymous or placeholder user behavior is documented.
 
 Files Allowed:
-- `src/features/polls/`
 - `app/episodes/[episodeId].tsx`
 - `plan.md`
 
@@ -1986,9 +2008,17 @@ Verification:
 - Attempt duplicate voting and confirm prevention.
 - Update `plan.md`.
 
+Findings:
+- Updated `app/episodes/[episodeId].tsx` to add UI-only local poll option selection and local vote submission behavior.
+- Added local state for selected option and submitted vote lock to emulate one-vote-per-user behavior in the current screen session only.
+- Added a local submit action that locks vote state after one submission and prevents additional submissions in the same local screen state.
+- Kept voting behavior explicitly temporary/local with helper text that account-connected voting will be added later.
+- Kept temporary poll content local to `app/episodes/[episodeId].tsx` and did not connect Create Episode poll draft state.
+- Did not add poll results, counts, percentages, real user identity, persistence, backend/database/Supabase/service/repository/auth/ownership logic, or package installation.
+
 ### Step 5.5 — Show Poll Results
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
 Show poll results after voting or when a poll is closed.
@@ -2000,7 +2030,6 @@ Acceptance Criteria:
 - Selected choice remains clear.
 
 Files Allowed:
-- `src/features/polls/`
 - `app/episodes/[episodeId].tsx`
 - `plan.md`
 
@@ -2014,6 +2043,14 @@ Verification:
 - Run available checks.
 - Vote and confirm results display.
 - Update `plan.md`.
+
+Findings:
+- Updated `app/episodes/[episodeId].tsx` to show UI-only poll results after a local vote is submitted.
+- Kept results hidden before submission, then displayed simple local-only counts and percentages for each option after submission.
+- Clearly indicated the selected option in the results state and retained local one-vote lock behavior.
+- Kept all temporary vote/result values local to `app/episodes/[episodeId].tsx` with no shared mock data layer.
+- Added clear helper text that results are local demo output until backend/account-connected behavior is implemented.
+- Did not add persistence, real user identity, Create Episode poll-state coupling, backend/database/Supabase/service/repository/auth/ownership logic, or package installation.
 
 ## Phase 6 — Continue Watching
 
@@ -2522,6 +2559,21 @@ Verification:
 | 2026-05-26 | Phase 4 — Follow Shows | Step 4.4 — Add Followed Shows List | Complete | Product owner reviewed and passed the UI-only Followed Shows list surface on Profile. Step 4.5 was started to add the Home followed-feed filter. | `plan.md` | Confirmed Step 4.4 findings were recorded and no persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
 | 2026-05-26 | Phase 4 — Follow Shows | Step 4.5 — Add Followed Shows Feed Filter | In Progress | Started adding a UI-only Home feed filter to switch between all-public episodes and local followed-show episodes using temporary in-file feed markers. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed filter scope remains local to Home with no Profile or Show detail state coupling, no persistence, and no backend, database, Supabase, service, repository, auth, or ownership logic. |
 | 2026-05-26 | Phase 4 — Follow Shows | Step 4.5 — Add Followed Shows Feed Filter | Ready for Review | Added local Home filter pills, local followed-show feed filtering, and a temporary helper note while preserving public-only/newest-first behavior and existing feed navigation actions. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.5 — Add Followed Shows Feed Filter | Complete | Product owner reviewed and passed the Home followed-show feed filter. Phase 4 was marked complete and Phase 5 was started with Episode poll type definitions. | `plan.md` | Confirmed Step 4.5 findings were recorded and no persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.1 — Define Episode Poll Types | In Progress | Started defining shared app-facing Episode poll types and poll input shapes for future UI-only poll creation and voting flows. | `plan.md`, `types/episodePoll.ts` | Confirmed Step 5.1 scope is type-only with no UI, behavior, backend, database, Supabase, service, repository, auth, ownership, or mock poll data changes. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.1 — Define Episode Poll Types | Ready for Review | Added shared Episode poll, option, vote, and create/update input types using existing `EpisodeId`, `UserId`, and `ISODateString` aliases while remaining backend-agnostic. | `plan.md`, `types/episodePoll.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.1 — Define Episode Poll Types | Complete | Product owner reviewed and passed shared Episode poll type definitions. Step 5.2 was started to add UI-only poll creation support in the Create Episode flow. | `plan.md` | Confirmed Step 5.1 findings were recorded and no UI, behavior, backend, database, Supabase, service, repository, auth, ownership, persistence, or mock poll data logic was added. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.2 — Add Poll Creation Support | In Progress | Started adding UI-only poll draft inputs to Create Episode with local state and validation messaging only. | `plan.md`, `app/shows/[showId]/episodes/create.tsx` | Confirmed Step 5.2 scope remains local UI-only with no persistence, backend, database, Supabase, service, repository, auth, ownership, voting, or poll results behavior. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.2 — Add Poll Creation Support | Ready for Review | Added local poll question/options/active-draft inputs and validation helper text to Create Episode, with clear messaging that poll saving and voting are connected later. | `plan.md`, `app/shows/[showId]/episodes/create.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.2 — Add Poll Creation Support | Complete | Product owner reviewed and passed UI-only poll drafting support in Create Episode. Step 5.3 was started to display polls on Episode detail without voting or results behavior. | `plan.md` | Confirmed Step 5.2 findings were recorded and no persistence, backend, database, Supabase, service, repository, auth, ownership, voting, or poll results logic was added. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.3 — Display Poll on Episode Detail | In Progress | Started adding a UI-only poll display section to Episode detail with local temporary poll content and no voting interactions. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 5.3 scope remains local UI-only with no voting, results, Create Episode state coupling, persistence, backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.3 — Display Poll on Episode Detail | Ready for Review | Added a local Episode detail poll card with question, active/inactive status, and options, plus helper text that voting and results are connected later. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.3 — Display Poll on Episode Detail | Complete | Product owner reviewed and passed UI-only poll display on Episode detail. Step 5.4 was started to add local one-vote selection and vote-lock behavior. | `plan.md` | Confirmed Step 5.3 findings were recorded and no voting behavior, results, persistence, backend, database, Supabase, service, repository, auth, ownership, or Create Episode poll-state coupling was added. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.4 — Allow One Vote Per User | In Progress | Started adding local-only poll option selection and vote submission lock behavior on Episode detail with no persistence or real user identity. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 5.4 scope remains local UI-only with no results, counts, percentages, persistence, backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.4 — Allow One Vote Per User | Ready for Review | Added one-option selection, local submit action, and local one-vote lock state on Episode detail with helper copy that voting remains temporary until account support is connected. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.4 — Allow One Vote Per User | Complete | Product owner reviewed and passed local one-vote selection and submission lock behavior on Episode detail. Step 5.5 was started to show local poll results after voting. | `plan.md` | Confirmed Step 5.4 findings were recorded and no results, persistence, backend, database, Supabase, service, repository, auth, ownership, or Create Episode poll-state coupling was added. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.5 — Show Poll Results | In Progress | Started adding UI-only local poll results display that appears after local vote submission on Episode detail. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 5.5 scope remains local UI-only with no persistence, real user identity, backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.5 — Show Poll Results | Ready for Review | Added local post-vote results with simple counts/percentages and selected-option indication while keeping pre-vote results hidden and all data local/non-persistent. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -2562,6 +2614,11 @@ Verification:
 - Step 4.3 adds a Show detail follower count display using local UI-only state and follow helper labels. It does not add persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic.
 - Step 4.4 adds a Profile-based Followed Shows list using local temporary items only. It does not connect to Show detail follow state, add persistence, global state, feed updates, backend, database, Supabase, service, repository, auth, or ownership logic.
 - Step 4.5 adds a Home feed filter for all-public versus local followed-show episodes using temporary in-file markers only. It does not connect Profile or Show detail follow state, add persistence, global state, backend, database, Supabase, service, repository, auth, ownership, or real feed algorithm logic.
+- Step 5.1 adds shared app-facing Episode poll types only. It does not add poll UI, voting behavior, persistence, mock poll records, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 5.2 adds UI-only poll draft inputs to Create Episode with local validation and local state only. It does not add poll display on Episode detail, voting behavior, poll results, backend, database, Supabase, service, repository, auth, ownership, persistence, or mock poll data.
+- Step 5.3 adds a UI-only poll display section on Episode detail with local temporary poll content only. It does not add voting behavior, poll results, Create Episode poll-state coupling, persistence, backend, database, Supabase, service, repository, auth, ownership, or a shared mock poll data layer.
+- Step 5.4 adds UI-only local one-vote selection and submission lock behavior on Episode detail. It does not add poll results, vote counts, percentages, real user identity, persistence, Create Episode poll-state coupling, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 5.5 adds UI-only local poll results shown after local vote submission on Episode detail. It does not add persistent votes/results, real user identity, Create Episode poll-state coupling, backend, database, Supabase, service, repository, auth, or ownership logic.
 
 ## 9. Out of Scope Until Later
 
@@ -2578,4 +2635,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 4.5 — Add Followed Shows Feed Filter is Ready for Review. After product owner approval, Step 4.5 can be marked Complete and Phase 4 can be marked complete.
+Step 5.5 — Show Poll Results is Ready for Review. After product owner approval, Step 5.5 can be marked Complete and Phase 5 can be reviewed for completion.
