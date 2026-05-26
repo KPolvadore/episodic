@@ -19,8 +19,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 1 — Shows  
-Current Step: Step 1.7 — Add Public/Private Show Visibility Rules  
+Current Phase: Phase 2 — Episodes  
+Current Step: Step 2.7 — Add Video Placeholder Support  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
@@ -33,11 +33,13 @@ Goal: Establish the app shell, routing, theme, folder structure, and development
 
 ### Phase 1 — Shows
 
-Status: In Progress
+Status: Complete
 
 Goal: Make Shows the primary product object.
 
 ### Phase 2 — Episodes
+
+Status: In Progress
 
 Goal: Add ordered Episodes inside Shows.
 
@@ -813,7 +815,7 @@ Findings:
 
 ### Step 1.7 — Add Public/Private Show Visibility Rules
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Add UI-only public/private visibility behavior so Shows consistently communicate which Shows are public and which are private.
@@ -876,19 +878,22 @@ Findings:
 
 ### Step 2.1 — Define Episode Types
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Define TypeScript types for ordered Episodes inside Shows.
 
 Acceptance Criteria:
-- Episode type includes identity, show reference, title, description, season number, episode number, status, timestamps, and optional video placeholder fields.
+- Episode type includes identity, show reference, title, description, season number, episode number, timestamps, simple hook type support, and optional video placeholder fields.
+- CreateEpisodeInput and UpdateEpisodeInput are exported.
 - Types support ordering inside a Show.
+- Types are app-facing and backend-agnostic.
 - No UI is built.
+- No mock data is added.
+- No Supabase, backend, database, service, or repository logic is added.
 
 Files Allowed:
-- `src/types/episode.ts`
-- `src/types/index.ts`
+- `types/episode.ts`
 - `plan.md`
 
 Out of Scope:
@@ -896,187 +901,446 @@ Out of Scope:
 - Video playback
 - Polls
 - Recaps
+- Mock data
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Installing packages
 
 Verification:
-- Run TypeScript check if available.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
 - Confirm exports resolve.
 - Update `plan.md`.
 
+Findings:
+- Created `types/episode.ts` for shared app-facing Episode TypeScript types.
+- Added `EpisodeId` as a string ID alias.
+- Added `EpisodeHookType` with simple hook values: `none`, `question`, `poll`, `cliffhanger`, `challenge`, and `reveal`.
+- Added `Episode` with `id`, `showId`, `seasonNumber`, `episodeNumber`, `title`, `description`, nullable `videoUrl`, nullable `thumbnailUrl`, `hookType`, `createdAt`, and `updatedAt`.
+- Reused `ShowId` and `ISODateString` from `types/show.ts`.
+- Added `CreateEpisodeInput` for future create forms with required Show reference, ordering numbers, and title, plus optional description, video placeholder fields, and hook type.
+- Added `UpdateEpisodeInput` for future edit flows using a partial subset of editable Episode fields.
+- No UI, navigation, Show screen changes, backend, database, Supabase, service, repository, persistence, mock data, or package installation was added.
+- Verification performed: inspected `types/episode.ts`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 2.2 — Add Episode Data Model Placeholder
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Add a minimal data boundary for Episode access inside Shows.
+Create a lightweight app-facing Episode model placeholder that centralizes default Episode values, hook options, numbering helpers, and simple validation helpers.
 
 Acceptance Criteria:
-- Episode data boundary supports list by Show, get by id, create, and update later.
-- Episode ordering is preserved.
-- No final backend is introduced.
+- Episode model helpers import and use Episode-related types from `types/episode.ts`.
+- Useful Episode defaults, hook options, labels, and validation helpers are exported for future UI.
+- Simple season and episode numbering helpers are included.
+- No backend, database, Supabase, service, repository, persistence, or mock Episode records are added.
+- No UI or navigation changes are made.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/episodes/data/`
-- `src/features/episodes/types.ts`
+- `models/episode.ts`
 - `plan.md`
 
 Out of Scope:
-- Real video hosting
-- Feed integration
-- Watch tracking
-- Polls
+- Episode UI
+- Episode list on Show detail
+- Episode detail screen
+- Create Episode screen
+- Edit Episode screen
+- Video player implementation
+- Poll types
+- Recap/Previously On types
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Mock data
+- Authentication
+- Feed logic
+- Navigation changes
+- Styling changes
+- Installing packages
+- Moving existing files
+- Creating `src/`
 
 Verification:
-- Run TypeScript check if available.
-- Confirm ordering behavior at the data boundary.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `models/episode.ts`.
 - Update `plan.md`.
+
+Findings:
+- Created `models/episode.ts` for lightweight app-facing Episode model utilities.
+- Imported and used Episode-related types from `types/episode.ts`.
+- Added default Episode creation values for hook type, season number, episode number, empty title, empty description, and nullable video placeholder fields.
+- Added hook type constants, labels, options, and `getEpisodeHookLabel`.
+- Added `normalizeEpisodeTitle` and `isValidEpisodeTitle` for future form validation.
+- Added `isValidEpisodeNumber` for positive integer season and episode numbering checks.
+- Added `getEpisodeDisplayNumber` for compact display strings such as `S1:E1`.
+- Added `getNextEpisodeNumber` for deriving the next episode number from caller-provided Episode summaries within a Show and season.
+- No UI, navigation, Show screen changes, tab screen changes, backend, database, Supabase, service, repository, persistence, mock Episode records, or package installation was added.
+- Verification performed: inspected `models/episode.ts`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
 
 ### Step 2.3 — Add Episode List to Show Detail
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Show ordered Episodes on the Show detail screen.
+Replace the placeholder Episodes section on the Show detail screen with a simple UI-only Episode list that shows how Episodes belong to a Show.
 
 Acceptance Criteria:
-- Show detail displays Episodes in season and episode order.
-- Empty state is present.
-- Episode rows preserve Show context.
-- No feed behavior is added.
+- Show detail screen includes an Episode list section.
+- Episode list displays at least one temporary UI-only Episode item.
+- Episode item displays season/episode number, title, description, hook label, and video placeholder/status.
+- Episode display numbering uses or aligns with helpers from `models/episode.ts`.
+- Episode hook labels use or align with helpers/options from `models/episode.ts`.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- Temporary Episode items, if used, are local to the Show detail UI file.
+- No shared mock data layer is created.
+- No Episode detail screen or navigation is added.
+- No Create Episode screen is added.
+- No real video player behavior is added.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No packages are installed.
 
 Files Allowed:
 - `app/shows/[showId].tsx`
-- `src/features/shows/`
-- `src/features/episodes/`
 - `plan.md`
 
 Out of Scope:
-- Episode playback
-- Continue watching
-- Recaps
-- Polls
+- Episode detail screen
+- Episode detail navigation
+- Create Episode screen
+- Edit Episode screen
+- Video player implementation
+- Poll types
+- Poll UI
+- Recap/Previously On types
+- Recap UI
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Feed logic
+- Navigation changes
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Modifying unrelated tabs
 
 Verification:
-- Run available checks.
-- Inspect Show detail with and without Episodes.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail Episode list section.
 - Update `plan.md`.
+
+Findings:
+- Replaced the placeholder Episodes copy on Show detail with a simple UI-only Episode list section.
+- Added local temporary Episode display items inside `app/shows/[showId].tsx`.
+- Typed the local temporary display items with a focused `Pick` from the shared `Episode` type.
+- Used `getEpisodeDisplayNumber` from `models/episode.ts` for compact season and episode numbering.
+- Used `getEpisodeHookLabel` from `models/episode.ts` for hook labels.
+- Each temporary Episode item displays a season/episode number, title, short description, hook label, and video placeholder status.
+- Kept Episode items local to the Show detail UI file and did not create a shared mock data layer.
+- Used existing `ThemedText`, `ThemedView`, and shared theme tokens for the Episode list UI.
+- No Episode detail route, Episode navigation, Create Episode screen, real video playback, backend, database, Supabase, service, repository, auth, ownership, persistence, or package installation was added.
+- Verification performed: inspected `app/shows/[showId].tsx`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
 
 ### Step 2.4 — Create Episode Detail Screen
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Create a detail screen for a single Episode.
+Create a UI-only Episode detail screen and allow users to navigate from the Show detail Episode list to a selected Episode detail view.
 
 Acceptance Criteria:
 - Episode detail route exists.
-- Episode title, description, numbering, and Show context render.
-- Missing Episode state is handled.
-- Navigation back to Show is available.
+- Tapping an Episode from the Show detail Episode list opens the Episode detail screen.
+- Episode detail displays season/episode number, title, description, hook label, and video placeholder/status.
+- Episode display numbering uses or aligns with helpers from `models/episode.ts`.
+- Episode hook labels use or align with helpers/options from `models/episode.ts`.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- Temporary Episode values are passed through route params or kept UI-only.
+- No shared mock data layer is created.
+- No Create Episode screen is added.
+- No Edit Episode screen is added.
+- No real video player behavior is added.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No packages are installed.
 
 Files Allowed:
 - `app/episodes/[episodeId].tsx`
-- `src/features/episodes/screens/`
-- `src/features/episodes/components/`
+- `app/shows/[showId].tsx`
+- `app/_layout.tsx`
 - `plan.md`
 
 Out of Scope:
-- Video playback
-- Polls
-- Watch tracking
-- Recaps
+- Create Episode screen
+- Edit Episode screen
+- Episode persistence
+- Video player implementation
+- Poll types
+- Poll UI
+- Recap/Previously On types
+- Recap UI
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Feed logic
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Modifying unrelated tabs
 
 Verification:
-- Run available checks.
-- Navigate from Show detail to Episode detail.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail Episode navigation.
+- Inspect Episode detail route behavior.
 - Update `plan.md`.
+
+Findings:
+- Created `app/episodes/[episodeId].tsx` as a UI-only Episode detail route.
+- Added a minimal `episodes/[episodeId]` stack screen title in `app/_layout.tsx`.
+- Updated the Show detail Episode list so each temporary Episode item is tappable.
+- Passed temporary UI-only Episode values through route params: title, description, season number, episode number, hook type, video placeholder value, and Episode id.
+- Passed temporary Show context through route params so Episode detail can link back to its parent Show.
+- Episode detail displays a video placeholder area, season/episode display number, title, description, hook label, video status, and parent Show card.
+- Used `getEpisodeDisplayNumber` and `getEpisodeHookLabel` from `models/episode.ts`.
+- Used existing `ThemedText`, `ThemedView`, and shared theme tokens.
+- No shared mock data layer, Create Episode screen, Edit Episode screen, real video player behavior, backend, database, Supabase, service, repository, auth, ownership, persistence, or package installation was added.
+- Verification performed: inspected `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx`, and `app/_layout.tsx`; ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ### Step 2.5 — Add Create Episode Screen
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Allow creators to add Episodes to a Show.
+Create a UI-only Create Episode screen/form so a user can enter Episode information for a Show locally without saving data yet.
 
 Acceptance Criteria:
-- Create Episode route exists.
-- Form includes required Episode fields.
-- Episode is associated with a Show.
-- Ordering fields are validated.
+- A UI-only Create Episode screen exists.
+- Show detail includes a clear Create Episode action.
+- Tapping Create Episode from Show detail opens the Create Episode screen.
+- Create Episode screen receives or knows the parent `showId`.
+- User can enter Episode title and description locally.
+- User can view or edit season number and episode number locally.
+- User can select or view hook type.
+- User can enter or view video placeholder information locally.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- Basic local validation exists or a clear placeholder validation message is shown.
+- Submit/create action is UI-only and does not persist data.
+- Show detail Episode list is not updated by the Create Episode form.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No Edit Episode screen is added.
+- No real video upload or video player behavior is added.
+- No packages are installed.
 
 Files Allowed:
-- `app/shows/[showId]/episodes/new.tsx`
-- `src/features/episodes/screens/`
-- `src/features/episodes/components/`
-- `src/features/episodes/data/`
+- `app/shows/[showId]/episodes/create.tsx`
+- `app/shows/[showId].tsx`
+- `app/_layout.tsx`
 - `plan.md`
 
 Out of Scope:
-- Video upload
-- Poll creation
-- Recap creation
-- Monetization
+- Persisting Episodes
+- Updating Show detail Episode list after create
+- Edit Episode screen
+- Episode persistence
+- Real video upload
+- Real video player implementation
+- Poll types
+- Poll UI
+- Recap/Previously On types
+- Recap UI
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Ownership/permission enforcement
+- Feed logic
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Modifying unrelated tabs
 
 Verification:
-- Run available checks.
-- Manually create an Episode for a Show.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail Create Episode action.
+- Inspect Create Episode route behavior.
 - Update `plan.md`.
+
+Findings:
+- Created `app/shows/[showId]/episodes/create.tsx` as a UI-only Create Episode route.
+- Added a minimal `shows/[showId]/episodes/create` stack screen title in `app/_layout.tsx`.
+- Added a clear Create Episode action to the Show detail Episodes section.
+- Passed temporary parent Show context through route params so the Create Episode screen knows the `showId` and display title.
+- Used `getDefaultCreateEpisodeInput`, `episodeHookOptions`, `normalizeEpisodeTitle`, `isValidEpisodeTitle`, `isValidEpisodeNumber`, and `getEpisodeDisplayNumber` from `models/episode.ts`.
+- Added local form state for title, description, season number, episode number, hook type, video URL, and thumbnail URL.
+- Added basic local validation for required title and positive whole season and episode numbers.
+- Added a local preview and a UI-only `Create Episode Later` button that does not persist data.
+- The Show detail Episode list is not updated by the Create Episode form.
+- No backend, database, Supabase, service, repository, auth, ownership, persistence, Edit Episode screen, real video upload, real video player behavior, shared mock data layer, or package installation was added.
+- Verification performed: inspected `app/shows/[showId].tsx`, `app/shows/[showId]/episodes/create.tsx`, and `app/_layout.tsx`; ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ### Step 2.6 — Add Season and Episode Numbering
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Normalize how Episodes are numbered and displayed inside Shows.
+Standardize UI-only season and episode numbering across Episode-related screens so Episodes consistently display as ordered parts of a Show.
 
 Acceptance Criteria:
-- Season and Episode labels are generated consistently.
-- Duplicate numbering in the same Show is prevented or flagged.
-- Sorting uses season and episode number.
-- Display format is reused across screens.
+- Show detail Episode list displays season/episode numbers consistently.
+- Episode detail displays season/episode number consistently.
+- Create Episode screen uses sensible local defaults for season and episode number.
+- Create Episode screen includes local validation or helper text for invalid numbering.
+- Number display uses or aligns with helpers from `models/episode.ts`.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No Episode values are persisted.
+- No shared mock data layer is created.
+- No Edit Episode screen is added.
+- No real video upload or video player behavior is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/episodes/`
-- `src/types/episode.ts`
+- `models/episode.ts`
+- `app/shows/[showId].tsx`
+- `app/episodes/[episodeId].tsx`
+- `app/shows/[showId]/episodes/create.tsx`
 - `plan.md`
 
 Out of Scope:
-- Multi-season UI management beyond numbering
-- Playback queues
-- Continue watching
-- Recaps
+- Persisting Episodes
+- Updating Show detail Episode list after create
+- Edit Episode screen
+- Episode persistence
+- Real video upload
+- Real video player implementation
+- Poll types
+- Poll UI
+- Recap/Previously On types
+- Recap UI
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Ownership/permission enforcement
+- Feed logic
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Modifying unrelated tabs
 
 Verification:
-- Run available checks.
-- Confirm sorted display and duplicate handling.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail Episode numbering.
+- Inspect Episode detail numbering.
+- Inspect Create Episode numbering defaults and validation.
 - Update `plan.md`.
+
+Findings:
+- Reviewed season and episode numbering across the Show detail Episode list, Episode detail screen, Create Episode screen, and `models/episode.ts`.
+- Confirmed Show detail Episode list displays numbering through `getEpisodeDisplayNumber`, producing `S#:E#` labels such as `S1:E1`.
+- Confirmed Episode detail displays numbering through `getEpisodeDisplayNumber`.
+- Confirmed Create Episode preview displays numbering through `getEpisodeDisplayNumber`.
+- Confirmed Create Episode defaults come from `getDefaultCreateEpisodeInput`, using season `1` and episode `1`.
+- Confirmed Create Episode validates season and episode numbers with `isValidEpisodeNumber` and shows a local warning for invalid values.
+- Updated Episode detail route-param parsing to use `isValidEpisodeNumber`, so invalid route param numbers fall back to safe local defaults.
+- No Episode values are persisted, no real data is reordered, and numbering remains UI-only.
+- No backend, database, Supabase, service, repository, auth, ownership, persistence, shared mock data layer, Edit Episode screen, real video upload, real video player behavior, or package installation was added.
+- Verification performed: inspected `models/episode.ts`, `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx`, and `app/shows/[showId]/episodes/create.tsx`; ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ### Step 2.7 — Add Video Placeholder Support
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
-Represent Episode video availability without implementing full upload or streaming.
+Standardize UI-only video and thumbnail placeholder support across Episode-related screens.
 
 Acceptance Criteria:
-- Episode can show a placeholder video state.
-- UI distinguishes unavailable, processing, and available placeholder states.
-- No real video upload or streaming service is added.
+- Episode detail includes a clear UI-only video placeholder area.
+- Show detail Episode list displays consistent video placeholder/status text.
+- Create Episode screen clearly shows video URL/thumbnail URL as local placeholder fields or clearly communicates video support is coming later.
+- Video placeholder messaging is consistent and does not imply real upload/playback exists.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- No real video upload is added.
+- No real video player behavior is added.
+- No Mux, Supabase storage, or external video service is added.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No Episode values are persisted.
+- No shared mock data layer is created.
+- No Edit Episode screen is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/types/episode.ts`
-- `src/features/episodes/`
+- `models/episode.ts`
+- `app/shows/[showId].tsx`
+- `app/episodes/[episodeId].tsx`
+- `app/shows/[showId]/episodes/create.tsx`
 - `plan.md`
 
 Out of Scope:
-- Video upload
-- Transcoding
-- CDN setup
-- Player analytics
+- Real video upload
+- Real video player implementation
+- Mux integration
+- Supabase storage
+- Episode persistence
+- Edit Episode screen
+- Poll types
+- Poll UI
+- Recap/Previously On types
+- Recap UI
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Ownership/permission enforcement
+- Feed logic
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Modifying unrelated tabs
 
 Verification:
-- Run available checks.
-- Inspect Episode detail video placeholder states.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail video status.
+- Inspect Episode detail video placeholder.
+- Inspect Create Episode video/thumbnail placeholder fields or messaging.
 - Update `plan.md`.
+
+Findings:
+- Reviewed video and thumbnail placeholder handling across Show detail Episode items, Episode detail, Create Episode, and `models/episode.ts`.
+- Added small app-facing Episode video helpers in `models/episode.ts`: `hasEpisodeVideoPlaceholder` and `getEpisodeVideoStatusLabel`.
+- Standardized UI-only video status labels to `Video URL added` when a local URL is present and `No video yet` when absent.
+- Updated Show detail Episode items to display video status through `getEpisodeVideoStatusLabel`.
+- Updated Episode detail to use the same video status label in both the video placeholder area and video status row.
+- Episode detail continues to show a clear video placeholder area and now explicitly states that real upload and playback will be connected later.
+- Updated Create Episode video URL helper text to use the same video status label and clarify that real upload and playback will be connected later.
+- Updated Create Episode thumbnail URL helper text to clarify that thumbnail values stay local until media storage is added later.
+- No real video upload, real video player behavior, Mux, Supabase storage, external video service, backend, database, Supabase, service, repository, auth, ownership, persistence, shared mock data layer, Edit Episode screen, or package installation was added.
+- Verification performed: inspected `models/episode.ts`, `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx`, and `app/shows/[showId]/episodes/create.tsx`; ran `npm run lint` and `npx tsc --noEmit`; both checks passed.
 
 ## Phase 3 — Feed
 
@@ -1980,6 +2244,20 @@ Verification:
 | 2026-05-26 | Phase 1 — Shows | Step 1.6 — Add Edit Show Support | Ready for Review | Added UI-only Edit Show navigation and a prefilled local edit form using temporary route params from Show detail. | `plan.md`, `app/_layout.tsx`, `app/shows/[showId].tsx`, `app/shows/[showId]/edit.tsx` | Inspected detail and edit route files; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 | 2026-05-26 | Phase 1 — Shows | Step 1.6 — Add Edit Show Support | Complete | Product owner reviewed and passed UI-only Edit Show support. Step 1.7 was started to standardize public/private visibility display. | `plan.md` | Confirmed Step 1.6 findings were recorded and no persistence, auth, ownership, or backend logic was added. |
 | 2026-05-26 | Phase 1 — Shows | Step 1.7 — Add Public/Private Show Visibility Rules | Ready for Review | Standardized UI-only public/private visibility labels across Home and Show detail, and added private visibility helper copy to Create and Edit forms. | `plan.md`, `components/ShowVisibilityBadge.tsx`, `app/(tabs)/home.tsx`, `app/(tabs)/create.tsx`, `app/shows/[showId].tsx`, `app/shows/[showId]/edit.tsx` | Inspected visibility UI surfaces; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.7 — Add Public/Private Show Visibility Rules | Complete | Product owner reviewed and passed UI-only public/private Show visibility rules. Phase 1 was marked complete and Phase 2 was started with Episode type definitions. | `plan.md` | Confirmed Step 1.7 findings were recorded and no auth, ownership, backend filtering, persistence, Episode type, or Episode UI was added before approval. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.1 — Define Episode Types | Ready for Review | Added shared app-facing Episode types with Show references, season and episode numbering, nullable video placeholder fields, simple hook type support, timestamps, and create/update inputs. | `plan.md`, `types/episode.ts` | Inspected `types/episode.ts`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.1 — Define Episode Types | Complete | Product owner reviewed and passed the shared Episode type definitions. Step 2.2 was started to add app-facing Episode model helpers. | `plan.md` | Confirmed Step 2.1 findings were recorded and no UI, mock data, backend, database, Supabase, service, repository, or persistence logic was added. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.2 — Add Episode Data Model Placeholder | Ready for Review | Added lightweight app-facing Episode model defaults, hook labels/options, title and numbering validation helpers, display numbering, and next episode numbering from caller-provided summaries. | `plan.md`, `models/episode.ts` | Inspected `models/episode.ts`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.2 — Add Episode Data Model Placeholder | Complete | Product owner reviewed and passed the app-facing Episode model helpers. Step 2.3 was started to add a UI-only Episode list to Show detail. | `plan.md` | Confirmed Step 2.2 findings were recorded and no UI, mock Episode records, backend, database, Supabase, service, repository, or persistence logic was added. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.3 — Add Episode List to Show Detail | Ready for Review | Replaced the Show detail Episodes placeholder with a UI-only local Episode list showing display numbers, titles, descriptions, hook labels, and video placeholder status. | `plan.md`, `app/shows/[showId].tsx` | Inspected `app/shows/[showId].tsx`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.3 — Add Episode List to Show Detail | Complete | Product owner reviewed and passed the UI-only Episode list on Show detail. Step 2.4 was started to add UI-only Episode detail navigation. | `plan.md` | Confirmed Step 2.3 findings were recorded and no Episode detail route, Create Episode screen, shared mock data, backend, database, Supabase, service, repository, auth, ownership, persistence, or real video playback was added. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.4 — Create Episode Detail Screen | Ready for Review | Added a UI-only Episode detail route, wired Show detail Episode items to it with temporary route params, and displayed Episode metadata, hook label, video placeholder status, and parent Show return action. | `plan.md`, `app/_layout.tsx`, `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx` | Inspected Show detail navigation and Episode detail route files; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.4 — Create Episode Detail Screen | Complete | Product owner reviewed and passed the UI-only Episode detail screen and navigation. Step 2.5 was started to add a UI-only Create Episode form. | `plan.md` | Confirmed Step 2.4 findings were recorded and no Create Episode, Edit Episode, shared mock data, real video playback, backend, database, Supabase, service, repository, auth, ownership, or persistence logic was added. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.5 — Add Create Episode Screen | Ready for Review | Added a UI-only Create Episode route, a Show detail Create Episode action, local form fields and validation, hook selection, placeholder video/thumbnail fields, and a non-persistent preview/submit state. | `plan.md`, `app/_layout.tsx`, `app/shows/[showId].tsx`, `app/shows/[showId]/episodes/create.tsx` | Inspected Show detail action and Create Episode route files; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.5 — Add Create Episode Screen | Complete | Product owner reviewed and passed the UI-only Create Episode screen. Step 2.6 was started to standardize season and episode numbering. | `plan.md` | Confirmed Step 2.5 findings were recorded and no persistence, Show detail list updates, Edit Episode, real video upload/playback, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.6 — Add Season and Episode Numbering | Ready for Review | Standardized UI-only Episode numbering review across Show detail, Episode detail, and Create Episode by using shared display and validation helpers with safe local defaults. | `plan.md`, `app/episodes/[episodeId].tsx` | Inspected Episode numbering surfaces; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.6 — Add Season and Episode Numbering | Complete | Product owner reviewed and passed UI-only season and episode numbering. Step 2.7 was started to standardize video placeholder support. | `plan.md` | Confirmed Step 2.6 findings were recorded and no Episode persistence, real data reordering, shared mock data, backend, database, Supabase, service, repository, auth, ownership, Edit Episode, upload, or playback logic was added. |
+| 2026-05-26 | Phase 2 — Episodes | Step 2.7 — Add Video Placeholder Support | Ready for Review | Standardized UI-only video placeholder status labels across Show detail, Episode detail, and Create Episode, with local video/thumbnail messaging that avoids implying upload or playback exists. | `plan.md`, `models/episode.ts`, `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx`, `app/shows/[showId]/episodes/create.tsx` | Inspected video placeholder surfaces; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -2003,6 +2281,13 @@ Verification:
 - Step 1.5 added a UI-only Create Show form. It does not persist Shows or update the Home list.
 - Step 1.6 added a UI-only Edit Show form. It does not persist edits, update the Home list, or update the Show detail screen.
 - Step 1.7 added UI-only visibility labels and helper text. It does not implement auth, ownership, backend filtering, or persistence.
+- Step 2.1 added shared Episode types only. It does not add UI, mock data, persistence, backend, database, Supabase, service, or repository logic.
+- Step 2.2 added shared Episode model helpers only. It does not add UI, mock Episode records, persistence, backend, database, Supabase, service, or repository logic.
+- Step 2.3 added a UI-only local Episode list on Show detail. It does not add Episode navigation, shared mock data, real video playback, persistence, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 2.4 added UI-only Episode detail navigation through temporary route params. It does not add Create Episode, Edit Episode, shared mock data, real video playback, persistence, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 2.5 added a UI-only Create Episode form. It does not persist Episodes, update the Show detail Episode list, add Edit Episode, perform real video upload/playback, or add backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 2.6 standardized UI-only season and episode numbering display and validation. It does not persist Episode values, reorder real data, add shared mock data, or add backend, database, Supabase, service, repository, auth, ownership, Edit Episode, upload, or playback logic.
+- Step 2.7 standardized UI-only video and thumbnail placeholder messaging. It does not add real upload, playback, Mux, Supabase storage, external video services, persistence, backend, database, Supabase, service, repository, auth, ownership, shared mock data, or Edit Episode logic.
 
 ## 9. Out of Scope Until Later
 
@@ -2019,4 +2304,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 1.7 — Add Public/Private Show Visibility Rules is Ready for Review. After product owner approval, Phase 1 can be reviewed for completion and Phase 2 — Episodes can begin.
+Step 2.7 — Add Video Placeholder Support is Ready for Review. After product owner approval, Step 2.7 can be marked Complete and the next approved Phase 2 step can begin.
