@@ -19,17 +19,21 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 0 — Project Foundation  
-Current Step: Step 0.8 — Verify TypeScript and App Launch  
+Current Phase: Phase 1 — Shows  
+Current Step: Step 1.7 — Add Public/Private Show Visibility Rules  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
 
 ### Phase 0 — Project Foundation
 
+Status: Complete
+
 Goal: Establish the app shell, routing, theme, folder structure, and development guardrails.
 
 ### Phase 1 — Shows
+
+Status: In Progress
 
 Goal: Make Shows the primary product object.
 
@@ -407,7 +411,7 @@ Findings:
 
 ### Step 0.8 — Verify TypeScript and App Launch
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Confirm the foundation compiles, lints, and launches before product features begin.
@@ -452,211 +456,421 @@ Findings:
 
 ### Step 1.1 — Define Show Types
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Define the TypeScript types that describe a Show as the primary product object.
 
 Acceptance Criteria:
-- Show type includes identity, title, description, creator reference, visibility, timestamps, and ordering-ready metadata.
+- `types/show.ts` exists.
+- A reusable `Show` type is exported.
+- `CreateShowInput` and `UpdateShowInput` are exported.
+- Show-related supporting types are exported where helpful.
+- Show type includes identity, title, description, creator reference, visibility, and timestamps.
 - Types avoid backend-specific assumptions.
 - No UI is built.
+- No mock data is added.
+- No Supabase, backend, or database logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/types/show.ts`
-- `src/types/index.ts`
+- `types/show.ts`
 - `plan.md`
 
 Out of Scope:
+- Episode types
 - Show data storage
 - Show screens
-- Episode types
 - Follow logic
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Mock data
+- Authentication
+- Feed logic
+- Navigation changes
+- Styling changes
+- Installing packages
 
 Verification:
 - Run TypeScript check if available.
 - Confirm exports resolve.
 - Update `plan.md`.
 
+Findings:
+- Created `types/show.ts`.
+- Exported `ShowId`, `UserId`, `ISODateString`, `ShowCategory`, `ShowVisibility`, `Show`, `CreateShowInput`, and `UpdateShowInput`.
+- `Show` includes identity, owner user reference, title, description, cover URL, category, public/private state through `isPublic`, and ISO timestamp strings.
+- `CreateShowInput` supports future create forms without requiring backend-generated fields.
+- `UpdateShowInput` supports partial updates to editable Show fields.
+- Types are app-facing and avoid Supabase, database schema, repository, service, mock data, Episode, moderation, analytics, and monetization assumptions.
+- No UI, navigation, styling, backend, or product behavior was added.
+- No packages were installed.
+- Verification performed: inspected `types/show.ts`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 1.2 — Add Show Data Model Placeholder
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Add a minimal local placeholder boundary for Show data access without committing to a final backend.
+Create a lightweight app-facing Show model placeholder for defaults, options, and helpers without adding persistence or backend behavior.
 
 Acceptance Criteria:
-- A Show data boundary exists.
-- Data access shape supports list, get by id, create, and update later.
-- No persistent backend is introduced.
-- No mock catalog is added beyond what is required for development scaffolding.
+- `models/show.ts` exists.
+- The file imports Show-related types from `types/show.ts`.
+- The file exports useful Show defaults, options, or helpers for future UI.
+- No backend, database, Supabase, service, or repository logic is added.
+- No mock data records are added.
+- No UI is added.
+- No navigation changes are made.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/shows/data/`
-- `src/features/shows/types.ts`
+- `models/show.ts`
 - `plan.md`
 
 Out of Scope:
+- Show UI
+- Show list screen
+- Show detail screen
+- Create Show screen
+- Edit Show screen
+- Episode types
+- Supabase setup
 - Database schema
+- Services
+- Repositories
+- Mock data
 - Authentication
-- Real API calls
 - Feed integration
+- Navigation changes
+- Styling changes
+- Installing packages
+- Moving existing files
+- Creating `src/`
 
 Verification:
 - Run TypeScript check if available.
 - Confirm no app UI behavior changes unless planned.
 - Update `plan.md`.
 
+Findings:
+- Created `models/show.ts`.
+- Imported `CreateShowInput`, `ShowCategory`, `ShowVisibility`, and `UserId` from `types/show.ts`.
+- Exported `defaultShowCategory`, `defaultShowVisibility`, `showCategories`, and `showVisibilityOptions`.
+- Exported small model-level helpers: `isShowPublic`, `getShowVisibility`, `normalizeShowTitle`, `isValidShowTitle`, and `getDefaultCreateShowInput`.
+- `getDefaultCreateShowInput` returns safe default values for future Create Show UI while requiring the caller to provide an owner user id.
+- No backend, database, Supabase, service, repository, persistence method, fetch/create/update/delete method, or mock Show record was added.
+- No UI, navigation, styling, or product behavior was added.
+- No packages were installed.
+- Verification performed: inspected `models/show.ts`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 1.3 — Create Show List UI
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Create the first UI for browsing Shows.
+Create the first UI surface for Shows by adding a simple Show list experience.
 
 Acceptance Criteria:
-- Show list screen renders available Shows.
-- Empty state is present.
-- UI treats Shows as the primary object.
-- Navigation to detail is prepared or implemented only if allowed by routing state.
+- A Show list UI renders in the app.
+- The list displays Show title, description, category, and visibility.
+- The UI uses existing `ThemedText` and `ThemedView` components.
+- The UI uses the shared theme where appropriate.
+- Placeholder Show items, if used, are clearly temporary and UI-only.
+- No backend, database, Supabase, service, repository, or persistence logic is added.
+- No Show detail screen is added yet.
+- No Create Show screen is added yet.
+- No packages are installed.
 
 Files Allowed:
-- `app/(tabs)/shows.tsx`
-- `src/features/shows/components/`
-- `src/features/shows/screens/`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
-- Episode lists
-- Follow buttons
-- Creator profiles
-- Feed ranking
+- Show detail screen
+- Create Show screen
+- Edit Show screen
+- Episode types
+- Episode UI
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Real mock data layer
+- Authentication
+- Feed algorithm
+- Navigation changes beyond the existing Home tab
+- Installing packages
+- Moving existing files
+- Creating `src/`
 
 Verification:
 - Run available checks.
 - Launch app and inspect Show list.
 - Update `plan.md`.
 
+Findings:
+- Updated `app/(tabs)/home.tsx` to render the first Show list UI.
+- Used existing `ThemedText` and `ThemedView` components.
+- Used shared theme tokens from `constants/theme.ts` for spacing and colors.
+- Added three temporary placeholder Show items local to `app/(tabs)/home.tsx`.
+- Each placeholder card displays title, description, category, visibility, and an `Episodes coming soon` label.
+- Placeholder Shows are UI-only and are not a mock data layer.
+- No backend, database, Supabase, service, repository, persistence, Show detail screen, Create Show screen, navigation change, or package installation was added.
+- Verification performed: inspected `app/(tabs)/home.tsx`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 1.4 — Create Show Detail Screen
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Create a detail screen that frames a Show as a serialized destination.
+Create a UI-only Show detail screen and allow users to navigate from the Home Show list to a selected Show detail view.
 
 Acceptance Criteria:
-- Show detail route exists.
-- Show title, description, creator, visibility, and basic metadata render.
-- Episode area is reserved only if Phase 2 has not started.
-- Missing Show state is handled.
+- A Show detail screen exists.
+- Tapping a Show from the Home list opens the Show detail screen.
+- The detail screen displays Show title, description, category, and visibility.
+- The detail screen includes a placeholder cover/header area.
+- The detail screen includes a placeholder episode section.
+- The UI uses existing `ThemedText` and `ThemedView` components.
+- The UI uses shared theme tokens where appropriate.
+- No backend, database, Supabase, service, repository, or persistence logic is added.
+- No Create Show or Edit Show screen is added.
+- No Episode types or real Episode data model is added.
+- No packages are installed.
 
 Files Allowed:
 - `app/shows/[showId].tsx`
-- `src/features/shows/screens/`
-- `src/features/shows/components/`
+- `app/(tabs)/home.tsx`
+- `app/_layout.tsx`
 - `plan.md`
 
 Out of Scope:
-- Episode implementation
-- Follow behavior
-- Polls
-- Monetization
+- Create Show screen
+- Edit Show screen
+- Episode types
+- Episode data model
+- Real Episode list
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Feed algorithm
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Redesigning unrelated tabs
 
 Verification:
 - Run available checks.
 - Navigate from Show list to Show detail.
 - Update `plan.md`.
 
+Findings:
+- Created `app/shows/[showId].tsx` as a UI-only Show detail route.
+- Updated `app/(tabs)/home.tsx` so each temporary Show card is tappable through a `Pressable`.
+- Home passes temporary UI-only display values to the detail route through Expo Router params: title, description, category, visibility, and show id.
+- Updated `app/_layout.tsx` with a minimal stack screen option for `shows/[showId]`.
+- The detail screen displays title, description, category, visibility, a placeholder cover area, and a placeholder Episodes section.
+- The detail screen uses existing `ThemedText` and `ThemedView` components and shared theme tokens.
+- Temporary Show data remains local to `app/(tabs)/home.tsx`; no shared mock data layer was created.
+- No backend, database, Supabase, service, repository, persistence, Create Show screen, Edit Show screen, Episode type, real Episode model, or package installation was added.
+- Verification performed: inspected `app/(tabs)/home.tsx` and `app/shows/[showId].tsx`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 1.5 — Add Create Show Screen
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Allow a user to create a Show shell.
+Create a UI-only Create Show screen/form that allows a user to enter Show information locally without saving data yet.
 
 Acceptance Criteria:
-- Create Show route exists.
-- Form includes required Show fields.
-- Validation covers required inputs.
-- Successful create follows the placeholder data boundary.
+- Create Show UI exists.
+- Create tab displays or leads to the Create Show screen.
+- User can enter a Show title and description locally.
+- User can select or view a category option.
+- User can select or view visibility.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- Basic local validation exists or a clear placeholder validation message is shown.
+- Submit/create action is UI-only and does not persist data.
+- No backend, database, Supabase, service, repository, or persistence logic is added.
+- Home Show list is not updated by the Create Show form.
+- No Edit Show behavior is added.
+- No Episode types or Episode UI is added.
+- No packages are installed.
 
 Files Allowed:
-- `app/shows/new.tsx`
-- `src/features/shows/screens/`
-- `src/features/shows/components/`
-- `src/features/shows/data/`
+- `app/(tabs)/create.tsx`
 - `plan.md`
 
 Out of Scope:
-- Episode creation
-- Image upload
-- Payments
-- Collaboration
+- Persisting Shows
+- Updating Home list after create
+- Create Show backend logic
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Edit Show screen
+- Episode types
+- Episode UI
+- Feed algorithm
+- Authentication
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Redesigning unrelated tabs
 
 Verification:
 - Run available checks.
-- Manually create a Show in the app flow.
+- Inspect the Create tab form.
 - Update `plan.md`.
+
+Findings:
+- Updated `app/(tabs)/create.tsx` so the existing Create tab renders a UI-only Create Show form.
+- Added local form state for title, description, category, and visibility.
+- Used `showCategories`, `showVisibilityOptions`, `defaultShowCategory`, `defaultShowVisibility`, `normalizeShowTitle`, `isValidShowTitle`, and `isShowPublic` from `models/show.ts`.
+- Used existing `ThemedText` and `ThemedView` components and shared theme tokens.
+- Added simple local title validation and a local preview.
+- Included a UI-only `Create Show Later` button; it does not persist data or update any list.
+- Home Show list is not updated by the form.
+- No backend, database, Supabase, service, repository, persistence, Edit Show behavior, Episode type, Episode UI, or package installation was added.
+- Verification performed: inspected `app/(tabs)/create.tsx`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
 
 ### Step 1.6 — Add Edit Show Support
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Allow editing basic Show metadata.
+Add UI-only Edit Show support so a user can navigate from a Show detail screen to an edit form prefilled with temporary display values.
 
 Acceptance Criteria:
-- Edit Show route or state exists.
-- Existing Show data populates the form.
-- Updates persist through the placeholder data boundary.
-- Missing or unauthorized states are handled at a placeholder level.
+- A UI-only Edit Show screen exists.
+- Show detail includes a clear Edit action.
+- Tapping Edit from Show detail opens the Edit Show screen.
+- Edit Show screen is prefilled with the selected Show's temporary display values.
+- User can edit title and description locally.
+- User can select or view category.
+- User can select or view visibility.
+- UI uses existing `ThemedText` and `ThemedView` components.
+- UI uses shared theme tokens where appropriate.
+- Basic local validation exists or a clear placeholder validation message is shown.
+- Save/update action is UI-only and does not persist data.
+- Home Show list is not updated by the Edit Show form.
+- Show detail screen is not updated by the Edit Show form.
+- No backend, database, Supabase, service, repository, auth, ownership, or persistence logic is added.
+- No Episode types or Episode UI is added.
+- No packages are installed.
 
 Files Allowed:
 - `app/shows/[showId]/edit.tsx`
-- `src/features/shows/screens/`
-- `src/features/shows/components/`
-- `src/features/shows/data/`
+- `app/shows/[showId].tsx`
+- `app/_layout.tsx`
 - `plan.md`
 
 Out of Scope:
-- Episode editing
-- Role permissions beyond placeholders
-- Collaboration
-- Analytics
+- Persisting Show edits
+- Updating Home list after edit
+- Updating Show detail after edit
+- Create Show persistence
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Ownership/permission enforcement
+- Episode types
+- Episode UI
+- Feed algorithm
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Redesigning unrelated tabs
 
 Verification:
 - Run available checks.
-- Manually edit a Show.
+- Inspect Show detail Edit action and Edit Show route behavior.
 - Update `plan.md`.
+
+Findings:
+- Created `app/shows/[showId]/edit.tsx` as a UI-only Edit Show route.
+- Added an `Edit Show` action to `app/shows/[showId].tsx`.
+- Updated `app/_layout.tsx` with a minimal stack title for `shows/[showId]/edit`.
+- The detail screen passes temporary UI-only route params to the edit screen: show id, title, description, category, and visibility.
+- The edit form is prefilled from those temporary route params.
+- The edit form supports local title, description, category, and visibility edits.
+- Used existing `ThemedText` and `ThemedView` components and shared theme tokens.
+- Used existing Show model helpers and option lists for validation, defaults, category options, and visibility options.
+- Added simple local title validation and a UI-only `Save Changes Later` button.
+- The edit form does not persist data, update the Home Show list, or update the Show detail screen.
+- No backend, database, Supabase, service, repository, auth, ownership, persistence, Episode type, Episode UI, or package installation was added.
+- Verification performed: inspected `app/shows/[showId].tsx` and `app/shows/[showId]/edit.tsx`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
 
 ### Step 1.7 — Add Public/Private Show Visibility Rules
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
-Add basic visibility behavior for public and private Shows.
+Add UI-only public/private visibility behavior so Shows consistently communicate which Shows are public and which are private.
 
 Acceptance Criteria:
-- Show visibility field is respected in list and detail behavior.
-- Private Shows are not shown in public browsing surfaces.
-- Visibility rules are centralized enough to avoid duplication.
-- Limitations are documented.
+- Public/private visibility is displayed consistently on Home Show list.
+- Public/private visibility is displayed consistently on Show detail.
+- Create Show form includes clear visibility selection or display.
+- Edit Show form includes clear visibility selection or display.
+- Private visibility has a simple UI-only explanation somewhere appropriate.
+- Existing Show model helpers are used where appropriate.
+- No real auth, ownership, backend filtering, Supabase, database, service, repository, or persistence logic is added.
+- No Show values are persisted.
+- No Episode types or Episode UI is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/shows/`
-- `src/types/show.ts`
+- `app/(tabs)/home.tsx`
+- `app/(tabs)/create.tsx`
+- `app/shows/[showId].tsx`
+- `app/shows/[showId]/edit.tsx`
+- `components/ShowVisibilityBadge.tsx`
 - `plan.md`
 
 Out of Scope:
-- Full authentication
-- Role-based access control
-- Backend security rules
-- Follow requests
+- Real authentication
+- Ownership/permission enforcement
+- Backend visibility filtering
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Persistence
+- Updating Home list after create/edit
+- Episode types
+- Episode UI
+- Feed algorithm
+- Installing packages
+- Moving existing files
+- Creating `src/`
+- Redesigning unrelated tabs
 
 Verification:
 - Run available checks.
-- Confirm public/private filtering behavior.
+- Confirm visibility labels on Home, Show detail, Create Show, and Edit Show.
 - Update `plan.md`.
+
+Findings:
+- Created `components/ShowVisibilityBadge.tsx` for consistent UI-only public/private labels.
+- Updated `app/(tabs)/home.tsx` to use `ShowVisibilityBadge` on each temporary Show card.
+- Updated `app/shows/[showId].tsx` to use `ShowVisibilityBadge` for detail visibility display.
+- Updated `app/(tabs)/create.tsx` with private visibility helper text in the visibility section.
+- Updated `app/shows/[showId]/edit.tsx` with private visibility helper text in the visibility section.
+- Used existing `isShowPublic` and `showVisibilityOptions` helpers where appropriate.
+- Private visibility copy explains that private Shows are only visible to the user once account support is connected.
+- No real auth, ownership, backend filtering, Supabase, database, service, repository, persistence, Episode type, Episode UI, or package installation was added.
+- Verification performed: inspected Home, Show detail, Create Show, and Edit Show visibility UI; ran `npm run lint`; ran `npx tsc --noEmit`; both checks passed.
 
 ## Phase 2 — Episodes
 
@@ -1752,6 +1966,20 @@ Verification:
 | 2026-05-26 | Phase 0 — Project Foundation | Step 0.7 — Establish Folder Conventions | Ready for Review | Documented folder conventions for existing root folders and future folders, with guidance to avoid `src/`, empty future folders, and duplicate patterns. | `plan.md` | Inspected current folder structure; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 | 2026-05-26 | Phase 0 — Project Foundation | Step 0.7 — Establish Folder Conventions | Complete | Product owner reviewed and passed the folder convention documentation. Step 0.8 was started for final Phase 0 verification. | `plan.md` | Confirmed Step 0.7 findings were recorded and no folders or files were moved. |
 | 2026-05-26 | Phase 0 — Project Foundation | Step 0.8 — Verify TypeScript and App Launch | Ready for Review | Completed final Phase 0 verification: lint passed, TypeScript passed, Expo start was attempted, and the current route structure was inspected. | `plan.md` | Ran `npm run lint`, `npx tsc --noEmit`, and `npm start`; Expo started the project and was stopped with `Ctrl-C` after no immediate app-code error appeared. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.8 — Verify TypeScript and App Launch | Complete | Product owner reviewed and passed final Phase 0 verification. Phase 1 was started with shared Show type definitions. | `plan.md` | Confirmed Step 0.8 findings were recorded and Phase 0 can be treated as passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.1 — Define Show Types | Ready for Review | Added shared app-facing Show TypeScript types, including Show identity, ownership, metadata, visibility, timestamps, and create/update inputs. | `plan.md`, `types/show.ts` | Inspected `types/show.ts`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.1 — Define Show Types | Complete | Product owner reviewed and passed the shared Show type definitions. Step 1.2 was started to add app-facing Show model helpers. | `plan.md` | Confirmed Step 1.1 findings were recorded and no UI or backend logic was added. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.2 — Add Show Data Model Placeholder | Ready for Review | Added app-facing Show defaults, options, and small model helpers without persistence, services, repositories, mock data, or UI behavior. | `plan.md`, `models/show.ts` | Inspected `models/show.ts`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.2 — Add Show Data Model Placeholder | Complete | Product owner reviewed and passed the Show model placeholder. Step 1.3 was started to add the first Show list UI surface. | `plan.md` | Confirmed Step 1.2 findings were recorded and no backend, service, repository, mock data, or UI behavior was added. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.3 — Create Show List UI | Ready for Review | Added the first Show list UI to the Home tab with temporary UI-only placeholder Shows rendered through shared theme components. | `plan.md`, `app/(tabs)/home.tsx` | Inspected `app/(tabs)/home.tsx`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.3 — Create Show List UI | Complete | Product owner reviewed and passed the Show list UI. Step 1.4 was started to add UI-only Show detail navigation. | `plan.md` | Confirmed Step 1.3 findings were recorded and temporary Shows remain UI-only. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.4 — Create Show Detail Screen | Ready for Review | Added a UI-only Show detail route and Home list navigation using temporary route params, with placeholder cover and episode sections. | `plan.md`, `app/_layout.tsx`, `app/(tabs)/home.tsx`, `app/shows/[showId].tsx` | Inspected Home and detail route files; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.4 — Create Show Detail Screen | Complete | Product owner reviewed and passed the UI-only Show detail screen. Step 1.5 was started to add the UI-only Create Show form. | `plan.md` | Confirmed Step 1.4 findings were recorded and no backend, persistence, Create Show, Edit Show, or Episode logic was added. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.5 — Add Create Show Screen | Ready for Review | Added a UI-only Create Show form in the Create tab with local title, description, category, visibility state, validation, and preview. | `plan.md`, `app/(tabs)/create.tsx` | Inspected `app/(tabs)/create.tsx`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.5 — Add Create Show Screen | Complete | Product owner reviewed and passed the UI-only Create Show form. Step 1.6 was started to add UI-only Edit Show support. | `plan.md` | Confirmed Step 1.5 findings were recorded and no persistence or Home-list update behavior was added. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.6 — Add Edit Show Support | Ready for Review | Added UI-only Edit Show navigation and a prefilled local edit form using temporary route params from Show detail. | `plan.md`, `app/_layout.tsx`, `app/shows/[showId].tsx`, `app/shows/[showId]/edit.tsx` | Inspected detail and edit route files; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.6 — Add Edit Show Support | Complete | Product owner reviewed and passed UI-only Edit Show support. Step 1.7 was started to standardize public/private visibility display. | `plan.md` | Confirmed Step 1.6 findings were recorded and no persistence, auth, ownership, or backend logic was added. |
+| 2026-05-26 | Phase 1 — Shows | Step 1.7 — Add Public/Private Show Visibility Rules | Ready for Review | Standardized UI-only public/private visibility labels across Home and Show detail, and added private visibility helper copy to Create and Edit forms. | `plan.md`, `components/ShowVisibilityBadge.tsx`, `app/(tabs)/home.tsx`, `app/(tabs)/create.tsx`, `app/shows/[showId].tsx`, `app/shows/[showId]/edit.tsx` | Inspected visibility UI surfaces; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -1764,12 +1992,17 @@ Verification:
 - No dedicated TypeScript check script is currently defined; `npx tsc --noEmit` is the current direct TypeScript verification command.
 - No test script is currently defined; future testing expectations should be added deliberately when tests are introduced.
 - Shared theme and themed primitives are now present. Future work should reuse `constants/theme.ts`, `components/ThemedText.tsx`, and `components/ThemedView.tsx` instead of creating duplicate patterns.
-- `hooks`, `types`, `services`, `lib`, `scripts`, and `src` folders are not present. Do not create them until an approved step needs them.
+- `types` now exists for shared TypeScript types. `models` now exists for app-facing model utilities. `hooks`, `services`, `lib`, `scripts`, and `src` folders are not present. Do not create them until an approved step needs them.
 - No routing blocker was found in Step 0.3.
 - Step 0.4 added bottom tabs without icons. Icons remain out of scope until an existing icon pattern is available or a future step explicitly allows one.
 - Step 0.5 added theme tokens only. Existing screens still use local styles until a future step explicitly allows adopting the shared theme.
 - Step 0.6 added themed wrapper components only. Existing screens still use local styles until a future step explicitly allows adopting shared components.
 - Step 0.7 documented root-level folder conventions. Do not introduce `src/` unless a future approved migration decision changes the project layout.
+- Step 1.3 added temporary UI-only placeholder Shows inside the Home tab. Do not treat them as shared mock data or persistence.
+- Step 1.4 passes temporary Show display values through route params for UI-only detail rendering. Do not treat this as a data access pattern for backend work.
+- Step 1.5 added a UI-only Create Show form. It does not persist Shows or update the Home list.
+- Step 1.6 added a UI-only Edit Show form. It does not persist edits, update the Home list, or update the Show detail screen.
+- Step 1.7 added UI-only visibility labels and helper text. It does not implement auth, ownership, backend filtering, or persistence.
 
 ## 9. Out of Scope Until Later
 
@@ -1786,4 +2019,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 0.8 — Verify TypeScript and App Launch is Ready for Review. After product owner approval, Phase 0 can be considered passed and Phase 1 — Shows can begin.
+Step 1.7 — Add Public/Private Show Visibility Rules is Ready for Review. After product owner approval, Phase 1 can be reviewed for completion and Phase 2 — Episodes can begin.

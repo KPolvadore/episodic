@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
 import {
   Pressable,
   ScrollView,
@@ -21,25 +22,56 @@ import {
 } from "@/models/show";
 import type { ShowCategory, ShowVisibility } from "@/types/show";
 
-export default function CreateScreen() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] =
-    useState<ShowCategory>(defaultShowCategory);
-  const [visibility, setVisibility] = useState<ShowVisibility>(
-    defaultShowVisibility,
-  );
+type EditShowParams = {
+  category?: ShowCategory;
+  description?: string;
+  showId?: string;
+  title?: string;
+  visibility?: ShowVisibility;
+};
+
+function getParamValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getShowCategoryParam(value: string | string[] | undefined) {
+  const category = getParamValue(value);
+
+  return showCategories.find((option) => option === category);
+}
+
+function getShowVisibilityParam(value: string | string[] | undefined) {
+  const visibility = getParamValue(value);
+
+  return showVisibilityOptions.find((option) => option === visibility);
+}
+
+export default function EditShowScreen() {
+  const params = useLocalSearchParams<EditShowParams>();
+
+  const initialTitle = getParamValue(params.title) ?? "";
+  const initialDescription = getParamValue(params.description) ?? "";
+  const initialCategory =
+    getShowCategoryParam(params.category) ?? defaultShowCategory;
+  const initialVisibility =
+    getShowVisibilityParam(params.visibility) ?? defaultShowVisibility;
+
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [category, setCategory] = useState<ShowCategory>(initialCategory);
+  const [visibility, setVisibility] =
+    useState<ShowVisibility>(initialVisibility);
 
   const normalizedTitle = useMemo(() => normalizeShowTitle(title), [title]);
-  const canSubmit = isValidShowTitle(title);
+  const canSave = isValidShowTitle(title);
 
   return (
     <ThemedView variant="screen" style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <ThemedText variant="title">Create Show</ThemedText>
+          <ThemedText variant="title">Edit Show</ThemedText>
           <ThemedText variant="body" style={styles.helperText}>
-            Draft the shell for a serialized story. Saving will be connected later.
+            Update the local draft fields. Saving will be connected later.
           </ThemedText>
         </View>
 
@@ -53,9 +85,9 @@ export default function CreateScreen() {
               style={styles.input}
               value={title}
             />
-            {!canSubmit ? (
+            {!canSave ? (
               <ThemedText variant="caption" style={styles.validationText}>
-                A title is required before this can be created.
+                A title is required before this can be saved.
               </ThemedText>
             ) : null}
           </View>
@@ -131,7 +163,7 @@ export default function CreateScreen() {
         </ThemedView>
 
         <ThemedView variant="card" style={styles.preview}>
-          <ThemedText variant="subtitle">Local preview</ThemedText>
+          <ThemedText variant="subtitle">Local edit preview</ThemedText>
           <ThemedText variant="body">
             {normalizedTitle || "Untitled Show"}
           </ThemedText>
@@ -139,17 +171,17 @@ export default function CreateScreen() {
             {category} - {isShowPublic(visibility) ? "public" : "private"}
           </ThemedText>
           <ThemedText variant="caption" style={styles.helperText}>
-            This form is UI-only and does not save yet.
+            This edit form is UI-only and does not save yet.
           </ThemedText>
         </ThemedView>
 
         <Pressable
-          accessibilityState={{ disabled: !canSubmit }}
-          disabled={!canSubmit}
-          style={[styles.submitButton, !canSubmit ? styles.disabledButton : null]}
+          accessibilityState={{ disabled: !canSave }}
+          disabled={!canSave}
+          style={[styles.saveButton, !canSave ? styles.disabledButton : null]}
         >
-          <ThemedText variant="body" style={styles.submitText}>
-            Create Show Later
+          <ThemedText variant="body" style={styles.saveText}>
+            Save Changes Later
           </ThemedText>
         </Pressable>
       </ScrollView>
@@ -210,6 +242,15 @@ const styles = StyleSheet.create({
   preview: {
     gap: theme.spacing.sm,
   },
+  saveButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.brand.primary,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.lg,
+  },
+  saveText: {
+    fontWeight: theme.typography.weight.bold,
+  },
   screen: {
     paddingTop: theme.spacing.xl,
   },
@@ -219,15 +260,6 @@ const styles = StyleSheet.create({
   },
   selectedOptionText: {
     color: theme.colors.text.primary,
-  },
-  submitButton: {
-    alignItems: "center",
-    backgroundColor: theme.colors.brand.primary,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.lg,
-  },
-  submitText: {
-    fontWeight: theme.typography.weight.bold,
   },
   validationText: {
     color: theme.colors.state.warning,
