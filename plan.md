@@ -20,8 +20,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 ## 3. Current Status
 
 Current Phase: Phase 0 — Project Foundation  
-Current Step: Step 0.1 — Create Build Plan  
-Status: In Progress
+Current Step: Step 0.8 — Verify TypeScript and App Launch  
+Status: Ready for Review
 
 ## 4. Phase Roadmap
 
@@ -71,7 +71,7 @@ Goal: Add support for tipping, premium episodes, or season passes later.
 
 ### Step 0.1 — Create Build Plan
 
-Status: In Progress
+Status: Complete
 
 Goal:
 Create the `plan.md` file that will guide the entire build.
@@ -100,7 +100,7 @@ Verification:
 
 ### Step 0.2 — Confirm Project Foundation
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Inspect the existing project structure, dependencies, scripts, and Expo configuration before changing app behavior.
@@ -127,18 +127,34 @@ Verification:
 - Review `package.json`, `app.json`, and existing app folder structure.
 - Update `plan.md` with findings.
 
-### Step 0.3 — Set Up Expo Router
+Findings:
+- Project type: Expo React Native app. `package.json` uses `expo-router/entry` as the main entry, `app.json` contains Expo configuration, and dependencies include `expo`, `react`, and `react-native`.
+- TypeScript: Configured through `tsconfig.json`, extending `expo/tsconfig.base`, with `strict` enabled and `@/*` mapped to the project root.
+- Routing: Expo Router is already installed and configured. `app.json` includes the `expo-router` plugin and typed routes are enabled. Existing routes are `app/_layout.tsx`, which renders `<Stack />`, and `app/index.tsx`, which renders the initial screen.
+- React Navigation: `@react-navigation/native` is a direct dependency. Additional React Navigation packages are present transitively through Expo Router in `package-lock.json`, but the app code currently uses Expo Router directly.
+- Folder structure: Present root folders include `app`, `assets`, `.expo`, and `.vscode`. `assets/images` contains app icons, splash assets, favicon, and default React logo images. No root `components`, `constants`, `hooks`, `scripts`, or `src` folders are present yet.
+- UI and theming: No shared theme files, color constants, `ThemedText`, `ThemedView`, or reusable UI component folders are present. `app/index.tsx` currently uses local `StyleSheet` styles with `Text` and `View` from `react-native`.
+- Relevant dependencies: Direct dependencies include `expo`, `react`, `react-dom`, `react-native`, `expo-router`, `expo-constants`, `expo-linking`, `expo-splash-screen`, `expo-status-bar`, `@react-navigation/native`, `react-native-safe-area-context`, `react-native-screens`, `react-native-web`. No direct Supabase dependency is listed in `package.json`. `react-native-reanimated` is not a direct dependency.
+- Scripts: Available scripts are `start` (`expo start`), `android` (`expo run:android`), `ios` (`expo run:ios`), `web` (`expo start --web`), and `lint` (`expo lint`). No dedicated TypeScript check or test script is currently defined.
+- Existing app entry surface: No `App.tsx` entry point is present; the app is using Expo Router file-based routing.
+- Current gaps for Phase 0: Shared theme, themed primitives, bottom tab navigation, folder conventions, TypeScript check script, and test script are not present yet. These should be handled only in their planned future steps.
+- Setup risks: Step 0.3 should avoid reinstalling Expo Router because it is already present and configured. Step 0.8 may need to account for the absence of a TypeScript check script and test script.
+- Verification performed: Inspected `git status --short`, root files, folder structure, `package.json`, `package-lock.json`, `tsconfig.json`, `app.json`, `eslint.config.js`, `app/_layout.tsx`, and `app/index.tsx`.
 
-Status: Not Started
+### Step 0.3 — Verify Expo Router Setup
+
+Status: Complete
 
 Goal:
-Ensure Expo Router is installed, configured, and used as the app navigation foundation.
+Verify Expo Router is installed, configured, and used as the app navigation foundation without duplicating existing setup.
 
 Acceptance Criteria:
-- Expo Router dependencies and configuration are present.
-- Root layout exists and loads without errors.
-- Initial route renders successfully.
-- Changes are limited to routing setup.
+- Expo Router setup is clearly verified.
+- Existing routing entry point is confirmed.
+- Existing `app/_layout.tsx` and `app/index.tsx` roles are summarized.
+- Any routing gaps or risks are documented.
+- No duplicate routing setup is added.
+- No app code is changed unless a minimal correction is required to fix an actual routing configuration issue.
 
 Files Allowed:
 - `package.json`
@@ -157,27 +173,51 @@ Out of Scope:
 
 Verification:
 - Run TypeScript or lint checks if available.
-- Launch the app and confirm the root route renders.
+- Inspect `package.json`, `app.json`, `tsconfig.json`, `app/_layout.tsx`, and `app/index.tsx`.
+- Confirm Expo Router configuration is present and non-duplicated.
 - Update `plan.md` with completion notes.
+
+Findings:
+- `package.json` confirms Expo Router is installed with `expo-router` `~6.0.23`.
+- `package.json` confirms the app entry point is `expo-router/entry`.
+- Relevant direct dependencies are present and aligned with the Expo app foundation: `expo` `~54.0.33`, `react` `19.1.0`, `react-native` `0.81.5`, `react-native-safe-area-context` `~5.6.0`, and `react-native-screens` `~4.16.0`.
+- `app.json` includes the `expo-router` plugin.
+- `app.json` has `experiments.typedRoutes` enabled.
+- `tsconfig.json` extends `expo/tsconfig.base` and includes `.expo/types/**/*.ts`, supporting Expo Router generated route types.
+- `app/_layout.tsx` exists and exports the root layout. It renders an Expo Router `<Stack />`, making stack navigation the current root navigation behavior.
+- `app/index.tsx` exists and serves as the current index route rendered by the root stack.
+- No `App.tsx` entry point is present.
+- No duplicate routing entry point or conflicting navigation container was found.
+- No routing configuration correction was needed, so no app code was changed.
+- Routing gaps or risks: Bottom tab navigation is not present yet and remains planned for Step 0.4. The current root stack is intentionally minimal. Future work should extend the existing Expo Router setup instead of reinstalling or duplicating router configuration.
+- Verification performed: Inspected `git status --short`, `package.json`, `app.json`, `tsconfig.json`, `app/_layout.tsx`, and `app/index.tsx`; ran `npm run lint`, which passed.
 
 ### Step 0.4 — Add Bottom Tab Navigation
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Add the primary app navigation shell with bottom tabs.
 
 Acceptance Criteria:
 - Bottom tab layout exists.
-- Initial tabs are minimal and aligned with near-term phases.
+- The bottom tabs are Home, Explore, Create, Notifications, and Profile.
+- Each tab has a simple placeholder screen.
 - Tabs render without navigation errors.
 - Tab setup does not include future feature implementation.
+- No Supabase, database, auth, video, feed, Show, or Episode logic is added.
+- No shared theme or themed primitives are added.
+- No packages are installed.
 
 Files Allowed:
 - `app/_layout.tsx`
+- `app/index.tsx`
 - `app/(tabs)/_layout.tsx`
-- `app/(tabs)/index.tsx`
-- `app/(tabs)/shows.tsx`
+- `app/(tabs)/home.tsx`
+- `app/(tabs)/explore.tsx`
+- `app/(tabs)/create.tsx`
+- `app/(tabs)/notifications.tsx`
+- `app/(tabs)/profile.tsx`
 - `plan.md`
 
 Out of Scope:
@@ -186,30 +226,47 @@ Out of Scope:
 - Feed algorithms
 - Follow logic
 - Polls
+- Shared theme
+- ThemedText
+- ThemedView
+- Supabase setup
+- Authentication
+- Icons requiring new dependencies
+- Design polish
 
 Verification:
 - Run TypeScript or lint checks if available.
 - Launch the app and confirm tabs render.
 - Update `plan.md` with completion notes.
 
+Findings:
+- Added the Expo Router `(tabs)` route group for the initial bottom tab shell.
+- Preserved the root Expo Router stack in `app/_layout.tsx` and configured the `(tabs)` stack screen with `headerShown: false`.
+- Updated `app/index.tsx` to redirect the root route to the Home tab.
+- Added five placeholder tab screens: Home, Explore, Create, Notifications, and Profile.
+- Each placeholder screen renders only the tab name with minimal local React Native styles.
+- No shared theme, `ThemedText`, `ThemedView`, Supabase setup, mock data, auth, video, feed, Show, Episode, notification, or profile logic was added.
+- No packages were installed.
+- TypeScript note: the root redirect uses an Expo Router `Href` assertion because generated typed-route files did not immediately include the newly added `/home` route during direct `tsc` verification.
+- Verification performed: inspected app route structure, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 0.5 — Add Shared Theme
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Create a small shared theme for colors, spacing, typography, and basic UI constants.
+Create a shared theme foundation for colors, spacing, typography, border radius, and shadows.
 
 Acceptance Criteria:
-- Theme constants are centralized.
-- Existing screens can import theme values.
-- Theme scope is minimal and does not introduce a design system prematurely.
-- No feature-specific styling is added.
+- A shared theme file exists.
+- Theme exports colors, spacing, typography, border radius, and basic shadow or elevation tokens.
+- Theme is typed or structured clearly enough for TypeScript usage.
+- No `ThemedText` or `ThemedView` components are added.
+- No Supabase, auth, database, Show, Episode, feed, or poll logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/theme/index.ts`
-- `src/theme/colors.ts`
-- `src/theme/spacing.ts`
-- `src/theme/typography.ts`
+- `constants/theme.ts`
 - `plan.md`
 
 Out of Scope:
@@ -218,29 +275,48 @@ Out of Scope:
 - Brand illustration
 - Feature screens
 - User settings
+- ThemedText
+- ThemedView
+- Redesigning placeholder screens
+- Installing packages
 
 Verification:
 - Run TypeScript or lint checks if available.
 - Confirm imports resolve.
 - Update `plan.md` with completion notes.
 
+Findings:
+- Created `constants/theme.ts` as the shared theme foundation.
+- Exported TypeScript-friendly token objects for `colors`, `spacing`, `typography`, `radius`, and `shadows`.
+- Exported a combined `theme` object and `Theme` type for future imports.
+- Kept the theme app-agnostic and dark-compatible, with neutral backgrounds, readable text colors, and strong brand/accent colors.
+- Did not redesign existing placeholder screens or wire the theme into app UI yet.
+- Did not add `ThemedText` or `ThemedView`; those remain planned for Step 0.6.
+- Did not add Supabase, auth, database, Show, Episode, feed, poll, notification, or profile logic.
+- No packages were installed.
+- Verification performed: inspected `constants/theme.ts`, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 0.6 — Add ThemedText and ThemedView
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Add basic reusable primitives for consistent text and layout styling.
+Create shared themed wrapper components that use theme tokens from `constants/theme.ts`.
 
 Acceptance Criteria:
-- `ThemedText` exists and supports core text variants.
-- `ThemedView` exists and supports basic layout use.
-- Components use the shared theme.
-- Components remain generic and feature-neutral.
+- `ThemedText` exists.
+- `ThemedView` exists.
+- Both components import and use `constants/theme.ts`.
+- Both components support style overrides.
+- Both components pass through standard React Native props.
+- `ThemedText` supports basic variants.
+- `ThemedView` supports basic layout variants or a reusable default pattern.
+- No Supabase, auth, database, Show, Episode, feed, or poll logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/components/ThemedText.tsx`
-- `src/components/ThemedView.tsx`
-- `src/components/index.ts`
+- `components/ThemedText.tsx`
+- `components/ThemedView.tsx`
 - `plan.md`
 
 Out of Scope:
@@ -249,57 +325,102 @@ Out of Scope:
 - Forms
 - Show-specific components
 - Episode-specific components
+- Redesigning all placeholder screens
+- Adding icons
+- Installing packages
+- Changing tab navigation behavior
 
 Verification:
 - Run TypeScript or lint checks if available.
 - Confirm components can be imported.
 - Update `plan.md` with completion notes.
 
+Findings:
+- Created `components/ThemedText.tsx`.
+- Created `components/ThemedView.tsx`.
+- Both components import and use tokens from `constants/theme.ts`.
+- `ThemedText` passes through standard React Native `Text` props, supports style overrides, and includes `body`, `title`, `subtitle`, and `caption` variants.
+- `ThemedView` passes through standard React Native `View` props, supports style overrides, and includes `default`, `screen`, and `card` variants.
+- Existing placeholder screens were not redesigned or updated in this step.
+- No Supabase, auth, database, Show, Episode, feed, poll, notification, or profile logic was added.
+- No packages were installed.
+- Verification performed: inspected the component files, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 0.7 — Establish Folder Conventions
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Define and create the minimal folder structure needed for upcoming phases.
+Document the project folder conventions so future work has a clear place to go without duplicate folders or unnecessary moves.
 
 Acceptance Criteria:
+- Current folder structure is inspected.
 - Folder conventions are documented in `plan.md`.
-- Only folders needed for near-term planned work are created.
-- No placeholder feature files or mock data are added.
-- Import conventions are clear.
+- Existing folders are assigned clear purposes.
+- Future folders are documented with guidance on when to create them.
+- No unnecessary empty folders are created.
+- No existing files are moved unless clearly justified.
+- No feature logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/components/`
-- `src/features/`
-- `src/theme/`
-- `src/types/`
 - `plan.md`
 
 Out of Scope:
-- Feature implementations
-- Database folders
-- API clients
-- Mock data
-- Tests for unbuilt features
+- Moving routes
+- Moving components
+- Creating product folders early
+- Creating empty future folders
+- Adding barrel exports
+- Creating Shows, Episodes, Feed, Auth, Supabase, or mock data
+- Installing packages
+- Redesigning screens
+- Changing tab navigation behavior
 
 Verification:
 - Inspect folder structure.
 - Confirm no feature code was added.
 - Update `plan.md` with completion notes.
 
+Folder Conventions:
+- `app/`: Expo Router routes only. Route groups such as `app/(tabs)` are used for navigation structure. Screens that are directly routable belong here.
+- `app/(tabs)/`: Bottom tab route group. Contains the Home, Explore, Create, Notifications, and Profile tab routes.
+- `components/`: Reusable UI components. Shared components such as `ThemedText` and `ThemedView` belong here. Feature-specific components should only be added later when an approved feature step needs them.
+- `constants/`: Shared constants and design tokens. `constants/theme.ts` belongs here.
+- `assets/`: Static images, fonts, icons, and other bundled assets.
+- `hooks/`: Reusable React hooks. Do not create until a real hook is needed.
+- `types/`: Shared TypeScript types. Do not create until Step 1.1 or another approved step needs shared types.
+- `services/`: API, backend, or data access services. Do not create until backend or data-service steps require it.
+- `lib/`: Shared client setup or integration helpers, such as a future Supabase client. Do not create until an approved setup step requires it.
+- `scripts/`: Local maintenance or development scripts. Do not create unless a real script is added.
+- `src/`: Do not introduce `src/` at this time. The project currently uses root-level `app`, `components`, `constants`, and future root folders.
+
+Findings:
+- Current folder structure was inspected.
+- Existing folders with app-owned source are `app`, `app/(tabs)`, `components`, `constants`, and `assets`.
+- No `src`, `hooks`, `types`, `services`, `lib`, or `scripts` folder currently exists.
+- No files were moved.
+- No empty future folders were created.
+- No feature logic, product data, Supabase, auth, Shows, Episodes, feed, or mock data was added.
+- No packages were installed.
+- Verification performed: inspected current folder structure, ran `npm run lint`, and ran `npx tsc --noEmit`; both checks passed.
+
 ### Step 0.8 — Verify TypeScript and App Launch
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
 Confirm the foundation compiles, lints, and launches before product features begin.
 
 Acceptance Criteria:
-- TypeScript check passes if a script is available.
-- Lint passes if a script is available.
-- App launches successfully.
-- Any remaining setup issues are logged.
-- Phase 0 can be marked complete only after verification passes or accepted gaps are recorded.
+- `npm run lint` passes.
+- `npx tsc --noEmit` passes.
+- Expo start command is attempted and the result is documented.
+- Current route structure is summarized.
+- Any remaining Phase 0 gaps are documented.
+- No product logic is added.
+- No packages are installed.
+- No app code is changed unless required to fix a real verification failure.
 
 Files Allowed:
 - `plan.md`
@@ -316,6 +437,16 @@ Verification:
 - Run available check commands.
 - Launch the app.
 - Update `plan.md` with results and next phase.
+
+Findings:
+- `npm run lint` passed.
+- `npx tsc --noEmit` passed.
+- `npm start` was attempted. Expo printed `Starting project at /Users/kerrypolvadore/KerryP/episodic-mobile` and stayed running without an immediate app-code error before it was stopped with `Ctrl-C`.
+- Current route structure was inspected. The app uses `app/_layout.tsx` as the root stack, `app/index.tsx` as a redirect into the tab experience, and `app/(tabs)/_layout.tsx` with Home, Explore, Create, Notifications, and Profile tab routes.
+- Phase 0 foundation is ready for Phase 1 review from a lint and TypeScript perspective.
+- Remaining Phase 0 gaps: no dedicated `typecheck` script is defined in `package.json`; direct `npx tsc --noEmit` is currently used for TypeScript verification. No test script exists yet, and tests should be introduced deliberately when testable product behavior exists.
+- No product logic, Supabase, auth, Shows, Episodes, feed, mock data, backend setup, or package installation was added.
+- No app code was changed for Step 0.8.
 
 ## Phase 1 — Shows
 
@@ -1607,6 +1738,20 @@ Verification:
 
 | Date | Phase | Step | Status | Summary | Files Changed | Verification |
 | --- | --- | --- | --- | --- | --- | --- |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.1 — Create Build Plan | Complete | Product owner reviewed and passed the build plan. Step 0.2 was started for foundation inspection. | `plan.md` | Confirmed `plan.md` exists and no app code changes were required. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.2 — Confirm Project Foundation | Ready for Review | Inspected the existing Expo React Native project foundation, Expo Router setup, folder structure, UI/theming patterns, dependencies, scripts, and future gaps. | `plan.md` | Reviewed `git status --short`, `package.json`, `package-lock.json`, `tsconfig.json`, `app.json`, root folder structure, `app/_layout.tsx`, and `app/index.tsx`. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.2 — Confirm Project Foundation | Complete | Product owner reviewed and passed the foundation inspection. Step 0.3 was started to verify the existing Expo Router setup. | `plan.md` | Confirmed Step 0.2 findings were recorded and no app code changes were required. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.3 — Verify Expo Router Setup | Ready for Review | Verified the existing Expo Router entry point, plugin configuration, typed routes support, root stack layout, and index route. No duplicate routing setup was added. | `plan.md` | Reviewed `git status --short`, `package.json`, `app.json`, `tsconfig.json`, `app/_layout.tsx`, and `app/index.tsx`; ran `npm run lint`, which passed. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.3 — Verify Expo Router Setup | Complete | Product owner reviewed and passed the Expo Router verification. Step 0.4 was started to add the initial bottom tab navigation shell. | `plan.md` | Confirmed Step 0.3 findings were recorded and no duplicate routing setup was added. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.4 — Add Bottom Tab Navigation | Ready for Review | Added the initial Expo Router bottom tab shell with Home, Explore, Create, Notifications, and Profile placeholder tabs. | `plan.md`, `app/_layout.tsx`, `app/index.tsx`, `app/(tabs)/_layout.tsx`, `app/(tabs)/home.tsx`, `app/(tabs)/explore.tsx`, `app/(tabs)/create.tsx`, `app/(tabs)/notifications.tsx`, `app/(tabs)/profile.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.4 — Add Bottom Tab Navigation | Complete | Product owner reviewed and passed the bottom tab navigation shell. Step 0.5 was started to add the shared theme foundation. | `plan.md` | Confirmed Step 0.4 findings were recorded and no packages were installed. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.5 — Add Shared Theme | Ready for Review | Added a shared TypeScript theme foundation with colors, spacing, typography, radius, and shadow tokens. | `plan.md`, `constants/theme.ts` | Inspected `constants/theme.ts`; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.5 — Add Shared Theme | Complete | Product owner reviewed and passed the shared theme foundation. Step 0.6 was started to add themed wrapper components. | `plan.md` | Confirmed Step 0.5 findings were recorded and no themed components were added before approval. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.6 — Add ThemedText and ThemedView | Ready for Review | Added generic themed text and view wrappers that use shared theme tokens, support variants, pass through React Native props, and allow style overrides. | `plan.md`, `components/ThemedText.tsx`, `components/ThemedView.tsx` | Inspected component files; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.6 — Add ThemedText and ThemedView | Complete | Product owner reviewed and passed the themed wrapper components. Step 0.7 was started to document folder conventions. | `plan.md` | Confirmed Step 0.6 findings were recorded and no product logic was added. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.7 — Establish Folder Conventions | Ready for Review | Documented folder conventions for existing root folders and future folders, with guidance to avoid `src/`, empty future folders, and duplicate patterns. | `plan.md` | Inspected current folder structure; ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.7 — Establish Folder Conventions | Complete | Product owner reviewed and passed the folder convention documentation. Step 0.8 was started for final Phase 0 verification. | `plan.md` | Confirmed Step 0.7 findings were recorded and no folders or files were moved. |
+| 2026-05-26 | Phase 0 — Project Foundation | Step 0.8 — Verify TypeScript and App Launch | Ready for Review | Completed final Phase 0 verification: lint passed, TypeScript passed, Expo start was attempted, and the current route structure was inspected. | `plan.md` | Ran `npm run lint`, `npx tsc --noEmit`, and `npm start`; Expo started the project and was stopped with `Ctrl-C` after no immediate app-code error appeared. |
 
 ## 7. Decisions Log
 
@@ -1615,7 +1760,16 @@ Verification:
 
 ## 8. Known Issues
 
-No known issues have been logged yet.
+- No blocking issues logged for Step 0.2.
+- No dedicated TypeScript check script is currently defined; `npx tsc --noEmit` is the current direct TypeScript verification command.
+- No test script is currently defined; future testing expectations should be added deliberately when tests are introduced.
+- Shared theme and themed primitives are now present. Future work should reuse `constants/theme.ts`, `components/ThemedText.tsx`, and `components/ThemedView.tsx` instead of creating duplicate patterns.
+- `hooks`, `types`, `services`, `lib`, `scripts`, and `src` folders are not present. Do not create them until an approved step needs them.
+- No routing blocker was found in Step 0.3.
+- Step 0.4 added bottom tabs without icons. Icons remain out of scope until an existing icon pattern is available or a future step explicitly allows one.
+- Step 0.5 added theme tokens only. Existing screens still use local styles until a future step explicitly allows adopting the shared theme.
+- Step 0.6 added themed wrapper components only. Existing screens still use local styles until a future step explicitly allows adopting shared components.
+- Step 0.7 documented root-level folder conventions. Do not introduce `src/` unless a future approved migration decision changes the project layout.
 
 ## 9. Out of Scope Until Later
 
@@ -1632,4 +1786,4 @@ No known issues have been logged yet.
 ## 10. Next Step
 
 Next Step:  
-Step 0.2 — Confirm Project Foundation
+Step 0.8 — Verify TypeScript and App Launch is Ready for Review. After product owner approval, Phase 0 can be considered passed and Phase 1 — Shows can begin.
