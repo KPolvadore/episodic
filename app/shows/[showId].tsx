@@ -1,4 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { ShowVisibilityBadge } from "@/components/ShowVisibilityBadge";
@@ -10,6 +11,10 @@ import {
   getEpisodeHookLabel,
   getEpisodeVideoStatusLabel,
 } from "@/models/episode";
+import {
+  getInitialShowFollowState,
+  getShowFollowerCountLabel,
+} from "@/models/showFollow";
 import { showVisibilityOptions } from "@/models/show";
 import type { Episode } from "@/types/episode";
 import type { ShowCategory, ShowVisibility } from "@/types/show";
@@ -79,6 +84,18 @@ export default function ShowDetailScreen() {
   const showId = getParamValue(params.showId) ?? "unknown-show";
   const visibility = getShowVisibilityParam(params.visibility) ?? "private";
   const episodes = getTemporaryEpisodes(showId);
+  const initialFollowState = useMemo(
+    () =>
+      getInitialShowFollowState({
+        currentUserId: null,
+        follows: [],
+        showId,
+      }),
+    [showId],
+  );
+  const [isFollowed, setIsFollowed] = useState(initialFollowState.isFollowed);
+  const [followerCount, setFollowerCount] = useState(12);
+  const followerCountLabel = getShowFollowerCountLabel(followerCount);
 
   return (
     <ThemedView variant="screen" style={styles.screen}>
@@ -94,6 +111,40 @@ export default function ShowDetailScreen() {
           <ThemedText variant="body" style={styles.description}>
             {description}
           </ThemedText>
+          <ThemedView variant="card" style={styles.followCard}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setIsFollowed((currentValue) => {
+                  const nextValue = !currentValue;
+                  setFollowerCount((currentCount) => {
+                    if (nextValue) {
+                      return currentCount + 1;
+                    }
+
+                    return Math.max(0, currentCount - 1);
+                  });
+
+                  return nextValue;
+                });
+              }}
+              style={[
+                styles.followButton,
+                isFollowed ? styles.followingButton : styles.followButtonDefault,
+              ]}
+            >
+              <ThemedText variant="body" style={styles.followButtonText}>
+                {isFollowed ? "Following (Tap to Unfollow)" : "Follow Show"}
+              </ThemedText>
+            </Pressable>
+            <ThemedText variant="caption" style={styles.followerCountText}>
+              {followerCountLabel}
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.followHelperText}>
+              Follow state and follower count are local to this screen until
+              account support is connected.
+            </ThemedText>
+          </ThemedView>
           <Pressable
             onPress={() => {
               router.push({
@@ -248,6 +299,33 @@ const styles = StyleSheet.create({
   },
   description: {
     color: theme.colors.text.secondary,
+  },
+  followButton: {
+    alignItems: "center",
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  followButtonDefault: {
+    backgroundColor: theme.colors.brand.secondary,
+  },
+  followButtonText: {
+    fontWeight: theme.typography.weight.bold,
+  },
+  followCard: {
+    gap: theme.spacing.sm,
+  },
+  followerCountText: {
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.weight.medium,
+  },
+  followHelperText: {
+    color: theme.colors.text.muted,
+  },
+  followingButton: {
+    backgroundColor: theme.colors.background.elevated,
+    borderColor: theme.colors.border.strong,
+    borderWidth: 1,
   },
   editButton: {
     alignItems: "center",
