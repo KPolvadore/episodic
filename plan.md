@@ -19,8 +19,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 3 — Feed  
-Current Step: Step 3.5 — Navigate from Feed to Show  
+Current Phase: Phase 4 — Follow Shows  
+Current Step: Step 4.5 — Add Followed Shows Feed Filter  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
@@ -45,11 +45,13 @@ Goal: Add ordered Episodes inside Shows.
 
 ### Phase 3 — Feed
 
-Status: In Progress
+Status: Complete
 
 Goal: Build a feed that surfaces Episodes while preserving Show context.
 
 ### Phase 4 — Follow Shows
+
+Status: In Progress
 
 Goal: Let users follow Shows and build a Show-based social graph.
 
@@ -1532,7 +1534,7 @@ Findings:
 
 ### Step 3.5 — Navigate from Feed to Show
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Allow feed users to open the parent Show from a feed item.
@@ -1578,35 +1580,63 @@ Findings:
 
 ### Step 4.1 — Define Show Follow Data Model
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Define how a user follows a Show.
 
 Acceptance Criteria:
-- Follow type includes user reference, Show reference, timestamps, and status if needed.
-- Data shape supports follow and unfollow behavior.
-- Model follows Show-first social graph assumptions.
+- Show follow types exist.
+- A reusable `ShowFollow` type/interface is exported.
+- Create/remove follow input types are exported where helpful.
+- `ShowFollow` references a Show through `showId`.
+- `ShowFollow` references a user through `userId`.
+- App-facing follow helper(s) exist only if useful and remain backend-agnostic.
+- No UI is added.
+- No mock follow records are added.
+- No Supabase/backend/database logic is added.
+- No services or repositories are added.
+- No authentication or ownership logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/types/follow.ts`
-- `src/features/follows/`
+- `types/showFollow.ts`
+- `models/showFollow.ts`
 - `plan.md`
 
 Out of Scope:
-- Creator follows
-- Direct messaging
-- Push notifications
-- Recommendations
+- Follow button UI
+- Unfollow button UI
+- Follower count UI
+- Followed Shows list
+- Followed Shows feed filter
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Mock follow records
+- Authentication
+- Ownership/permission enforcement
+- Feed algorithm
+- Notifications
+- Installing packages
 
 Verification:
-- Run TypeScript check if available.
-- Confirm exports resolve.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `types/showFollow.ts` and `models/showFollow.ts`.
 - Update `plan.md`.
+
+Findings:
+- Added shared app-facing Show follow types in `types/showFollow.ts`: `ShowFollowId`, `ShowFollow`, `CreateShowFollowInput`, `RemoveShowFollowInput`, and `ShowFollowState`.
+- Reused `ShowId`, `UserId`, and `ISODateString` from `types/show.ts` to keep follow modeling aligned with existing Show typing.
+- Added lightweight backend-agnostic follow helpers in `models/showFollow.ts`: `isShowFollowed`, `getShowFollowerCountLabel`, and `getInitialShowFollowState`.
+- Kept follow helpers app-facing and synchronous with no persistence, service, repository, authentication, ownership, database, or Supabase coupling.
+- No UI updates, route changes, mock follow records, or package installation were added.
 
 ### Step 4.2 — Add Follow/Unfollow Button
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Let users follow or unfollow Shows.
@@ -1615,57 +1645,107 @@ Acceptance Criteria:
 - Show detail includes follow/unfollow control.
 - Button state reflects current follow state.
 - Toggle behavior uses the follow data boundary.
-- Private Show limitations are handled.
+- Initial follow state is a safe local placeholder.
+- Follow state is local UI-only and not persisted.
+- Existing Show detail content, edit action, and Episode section remain intact.
+- Home feed is not updated by follow actions.
+- No global follow state is added.
+- Follow UI clearly communicates behavior is temporary until account support is connected.
+- No backend, database, Supabase, service, repository, auth, ownership, or permission logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/follows/`
-- `src/features/shows/`
 - `app/shows/[showId].tsx`
 - `plan.md`
 
 Out of Scope:
-- Push notifications
-- Follower lists
-- Creator follows
-- Paid subscriptions
+- Follower count UI
+- Followed Shows list
+- Followed Shows feed filter
+- Persisting follow state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Ownership/permission enforcement
+- Global state/context
+- Feed updates
+- Notifications
+- Installing packages
 
 Verification:
-- Run available checks.
-- Toggle follow state on a Show.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail Follow/Unfollow behavior.
 - Update `plan.md`.
+
+Findings:
+- Added a UI-only Follow/Unfollow control to `app/shows/[showId].tsx` using local component state.
+- Initialized follow state with `getInitialShowFollowState` from `models/showFollow.ts` using safe local placeholders (`currentUserId: null`, no follow records), resulting in a default not-followed state.
+- Added local toggle behavior that switches button label between `Follow Show` and `Following (Tap to Unfollow)` without persistence.
+- Added clear helper text indicating follow state is local to the screen until account support is connected.
+- Preserved existing Show detail content, Edit Show action, Episode list rendering, and Create Episode action.
+- Did not add follower count UI, global state, Home feed updates, persistence, backend/database/Supabase/service/repository logic, auth, ownership, or package installation.
 
 ### Step 4.3 — Display Follower Count
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Show follower count for a Show.
 
 Acceptance Criteria:
 - Show detail displays follower count.
-- Count updates after follow/unfollow.
-- Count display handles zero followers.
+- Follower count uses a local UI-only placeholder value.
+- Follower count label uses or aligns with `getShowFollowerCountLabel`.
+- Count remains local and non-persistent.
+- Follow/Unfollow button remains functional.
+- Existing Show detail content remains intact.
+- Existing edit Show action remains intact.
+- Existing Episode list and Create Episode action remain intact.
+- Home feed is not updated by follower count or follow state.
+- No global state is added.
+- No backend, database, Supabase, service, repository, auth, ownership, or permission logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/follows/`
-- `src/features/shows/`
 - `app/shows/[showId].tsx`
 - `plan.md`
 
 Out of Scope:
-- Follower identity list
-- Analytics dashboard
+- Followed Shows list
+- Followed Shows feed filter
+- Persisting follower count
+- Persisting follow state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Ownership/permission enforcement
+- Global state/context
+- Feed updates
 - Notifications
-- Social sharing
+- Installing packages
 
 Verification:
-- Run available checks.
-- Confirm follower count behavior.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Show detail follower count display.
+- Inspect Follow/Unfollow toggle behavior.
 - Update `plan.md`.
+
+Findings:
+- Added a local UI-only follower count display to `app/shows/[showId].tsx` near the follow controls.
+- Added a safe local placeholder follower count and rendered its label with `getShowFollowerCountLabel` from `models/showFollow.ts`.
+- Kept follower count behavior screen-local and non-persistent, with optional local count updates when Follow/Unfollow is toggled.
+- Preserved existing Show detail content, Edit Show action, Episode list rendering, and Create Episode action.
+- Did not add Home feed updates, global state, persistence, backend/database/Supabase/service/repository logic, authentication, ownership, or package installation.
 
 ### Step 4.4 — Add Followed Shows List
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Give users a place to view Shows they follow.
@@ -1674,27 +1754,56 @@ Acceptance Criteria:
 - Followed Shows list renders followed Shows.
 - Empty state is present.
 - List routes to Show detail.
+- Temporary followed Show items are local to the screen file.
+- Followed Show items display Show title, description, and category.
+- Visibility context is displayed where appropriate.
+- Follower count label is displayed when local and simple.
+- UI clearly communicates this is temporary/local until account support is connected.
+- Show detail Follow/Unfollow state is not connected to this list.
+- Home feed is not updated.
+- Followed Shows feed filter is not added.
+- No global state is added.
+- No backend, database, Supabase, service, repository, auth, ownership, or permission logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `app/(tabs)/following.tsx`
-- `src/features/follows/`
-- `src/features/shows/`
+- `app/(tabs)/profile.tsx`
 - `plan.md`
 
 Out of Scope:
-- Feed filtering
+- Connecting Follow/Unfollow to the list
+- Persisting followed Shows
+- Followed Shows feed filter
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Ownership/permission enforcement
+- Global state/context
+- Feed updates
 - Notifications
-- Creator following
-- Recommendations
+- Installing packages
 
 Verification:
-- Run available checks.
-- Inspect followed Shows list.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Followed Shows list display on Profile.
+- Confirm Profile tab remains accessible.
 - Update `plan.md`.
+
+Findings:
+- Replaced the Profile placeholder with a UI-only Followed Shows list in `app/(tabs)/profile.tsx`.
+- Added temporary followed Show display items local to `app/(tabs)/profile.tsx`.
+- Each item displays Show title, description, category, visibility badge, and local follower count label via `getShowFollowerCountLabel`.
+- Added a clear `Following` label and helper text that followed list behavior is local until account support is connected.
+- Added safe item press navigation to existing Show detail route using temporary Show route params, without changing route architecture.
+- Did not connect Show detail Follow/Unfollow local state to this list.
+- Did not add Home feed updates, followed feed filtering, global state, persistence, backend/database/Supabase/service/repository/auth/ownership logic, or package installation.
 
 ### Step 4.5 — Add Followed Shows Feed Filter
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
 Allow feed users to filter Episodes to followed Shows.
@@ -1704,23 +1813,61 @@ Acceptance Criteria:
 - Filter state is clear.
 - Empty state handles no followed Shows or no Episodes.
 - Existing visibility rules still apply.
+- Home feed has a visible UI-only filter control.
+- User can switch between all-public and followed-Shows views locally.
+- Followed feed uses local temporary followed markers only.
+- Newest-first ordering remains intact.
+- Feed-to-Episode navigation remains intact.
+- Feed-to-Show navigation remains intact.
+- UI clearly communicates followed feed behavior is temporary/local until account support is connected.
+- Profile followed Shows and Show detail follow state are not connected to this filter.
+- No backend, database, Supabase, service, repository, auth, ownership, persistence, or global state logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/feed/`
-- `src/features/follows/`
-- `app/(tabs)/index.tsx`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
-- Ranking algorithm
-- Push notifications
-- Recommendations
-- Ads
+- Connecting Profile followed Shows to Home feed
+- Connecting Show detail Follow/Unfollow state to Home feed
+- Persisting followed Shows
+- Persisting feed preference
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Ownership/permission enforcement
+- Global state/context
+- Notifications
+- Real feed algorithm
+- Infinite scroll
+- Pull to refresh
+- Search
+- Likes
+- Comments
+- Sharing
+- Installing packages
 
 Verification:
-- Run available checks.
-- Confirm filter behavior.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect Home feed filter control.
+- Inspect all-public feed behavior.
+- Inspect followed-Shows feed behavior.
+- Confirm feed-to-Episode and feed-to-Show navigation.
 - Update `plan.md`.
+
+Findings:
+- Added a UI-only Home feed filter control in `app/(tabs)/home.tsx` with local state for `All Public` and `Followed Shows`.
+- Added local `isFollowedShow` flags on temporary feed items and filtered followed view from those local markers only.
+- Kept temporary feed items local to `app/(tabs)/home.tsx`.
+- Preserved public-only filtering and newest-first ordering in both filter views by deriving followed items from the existing public and sorted feed source.
+- Preserved existing feed-to-Episode and feed-to-Show navigation behaviors.
+- Added clear helper copy that followed feed behavior is local until account support is connected.
+- Did not connect Profile followed Shows or Show detail Follow/Unfollow state to the Home filter.
+- Did not add global state, persistence, backend/database/Supabase/service/repository/auth/ownership logic, feed algorithm logic, or package installation.
 
 ## Phase 5 — Audience Interaction
 
@@ -2360,6 +2507,21 @@ Verification:
 | 2026-05-26 | Phase 3 — Feed | Step 3.4 — Navigate from Feed to Episode | Complete | Product owner reviewed and passed feed-to-Episode navigation. Step 3.5 was started to add feed-to-Show navigation. | `plan.md` | Confirmed Step 3.4 findings were recorded and no backend, database, Supabase, service, repository, auth, ownership, persistence, or feed algorithm logic was added. |
 | 2026-05-26 | Phase 3 — Feed | Step 3.5 — Navigate from Feed to Show | In Progress | Started adding a secondary Show-detail action on Home feed cards while preserving existing Episode-detail primary navigation and feed behavior. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed temporary feed items remain local and public-only/newest-first behavior remains intact; pending final verification checks. |
 | 2026-05-26 | Phase 3 — Feed | Step 3.5 — Navigate from Feed to Show | Ready for Review | Added `View Show` action per feed card and passed temporary Show route params to existing Show detail while keeping feed-to-Episode navigation intact. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 3 — Feed | Step 3.5 — Navigate from Feed to Show | Complete | Product owner reviewed and passed feed-to-Show navigation. Phase 3 was marked complete and Phase 4 was started with Show follow data model work. | `plan.md` | Confirmed Step 3.5 findings were recorded and no backend, database, Supabase, service, repository, auth, ownership, persistence, or feed algorithm logic was added. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.1 — Define Show Follow Data Model | In Progress | Started defining backend-agnostic app-facing Show follow types and lightweight model helpers for future follow/unfollow UI work. | `plan.md`, `types/showFollow.ts`, `models/showFollow.ts` | Confirmed follow scope remains type/model-only with no UI, no mock records, and no backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.1 — Define Show Follow Data Model | Ready for Review | Added shared Show follow types and lightweight follow state helpers aligned with existing `ShowId` and `UserId` typing. | `plan.md`, `types/showFollow.ts`, `models/showFollow.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.1 — Define Show Follow Data Model | Complete | Product owner reviewed and passed shared Show follow data model types and helpers. Step 4.2 was started to add UI-only follow/unfollow behavior on Show detail. | `plan.md` | Confirmed Step 4.1 findings were recorded and no UI, persistence, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.2 — Add Follow/Unfollow Button | In Progress | Started adding a UI-only follow toggle on Show detail with local component state and temporary messaging for future account-connected behavior. | `plan.md`, `app/shows/[showId].tsx` | Confirmed follow behavior remains screen-local with no global state, persistence, backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.2 — Add Follow/Unfollow Button | Ready for Review | Added a Show detail Follow/Unfollow button that toggles local UI state and clearly communicates temporary local behavior until account support is connected. | `plan.md`, `app/shows/[showId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.2 — Add Follow/Unfollow Button | Complete | Product owner reviewed and passed UI-only Follow/Unfollow behavior on Show detail. Step 4.3 was started to display follower count. | `plan.md` | Confirmed Step 4.2 findings were recorded and no persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.3 — Display Follower Count | In Progress | Started adding a UI-only local follower count display on Show detail using existing follow helpers and local screen state only. | `plan.md`, `app/shows/[showId].tsx` | Confirmed count scope remains screen-local and non-persistent with no Home feed update, global state, backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.3 — Display Follower Count | Ready for Review | Added a Show detail follower count label driven by local placeholder state and kept it aligned with follow toggle behavior. | `plan.md`, `app/shows/[showId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.3 — Display Follower Count | Complete | Product owner reviewed and passed UI-only follower count display on Show detail. Step 4.4 was started to add a Followed Shows list surface. | `plan.md` | Confirmed Step 4.3 findings were recorded and no persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.4 — Add Followed Shows List | In Progress | Started adding a UI-only Followed Shows list on Profile with local temporary followed Show items and existing Show detail route compatibility. | `plan.md`, `app/(tabs)/profile.tsx` | Confirmed list scope remains local to Profile with no persistence, global state, Home feed update, followed feed filter, backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.4 — Add Followed Shows List | Ready for Review | Added Profile-based Followed Shows list cards with local temporary Show data, visibility context, local follower labels, and safe navigation to existing Show detail params. | `plan.md`, `app/(tabs)/profile.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.4 — Add Followed Shows List | Complete | Product owner reviewed and passed the UI-only Followed Shows list surface on Profile. Step 4.5 was started to add the Home followed-feed filter. | `plan.md` | Confirmed Step 4.4 findings were recorded and no persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic was added. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.5 — Add Followed Shows Feed Filter | In Progress | Started adding a UI-only Home feed filter to switch between all-public episodes and local followed-show episodes using temporary in-file feed markers. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed filter scope remains local to Home with no Profile or Show detail state coupling, no persistence, and no backend, database, Supabase, service, repository, auth, or ownership logic. |
+| 2026-05-26 | Phase 4 — Follow Shows | Step 4.5 — Add Followed Shows Feed Filter | Ready for Review | Added local Home filter pills, local followed-show feed filtering, and a temporary helper note while preserving public-only/newest-first behavior and existing feed navigation actions. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -2395,6 +2557,11 @@ Verification:
 - Step 3.3 strengthens Show context on Home feed cards through UI hierarchy and series-oriented labeling while preserving existing temporary public-only filtering, newest-first ordering, and navigation behavior.
 - Step 3.4 adds feed-to-Episode navigation using temporary route params aligned with existing Episode detail behavior, while preserving public-only filtering, newest-first ordering, and local temporary feed data.
 - Step 3.5 adds feed-to-Show navigation with a secondary card action while preserving existing feed-to-Episode behavior, public-only filtering, newest-first ordering, and local temporary feed data.
+- Step 4.1 adds app-facing Show follow types and lightweight follow state helpers only. It does not add UI, mock follow records, persistence, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 4.2 adds a Show detail follow/unfollow toggle using local UI state only. It does not add follower count UI, global state, persistence, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 4.3 adds a Show detail follower count display using local UI-only state and follow helper labels. It does not add persistence, global state, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 4.4 adds a Profile-based Followed Shows list using local temporary items only. It does not connect to Show detail follow state, add persistence, global state, feed updates, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 4.5 adds a Home feed filter for all-public versus local followed-show episodes using temporary in-file markers only. It does not connect Profile or Show detail follow state, add persistence, global state, backend, database, Supabase, service, repository, auth, ownership, or real feed algorithm logic.
 
 ## 9. Out of Scope Until Later
 
@@ -2411,4 +2578,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 3.5 — Navigate from Feed to Show is Ready for Review. After product owner approval, Step 3.5 can be marked Complete and the next approved Feed step can begin.
+Step 4.5 — Add Followed Shows Feed Filter is Ready for Review. After product owner approval, Step 4.5 can be marked Complete and Phase 4 can be marked complete.

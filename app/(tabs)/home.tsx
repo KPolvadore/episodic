@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import {
@@ -27,7 +28,10 @@ type PlaceholderFeedEpisode = {
   hookType: "none" | "question" | "poll" | "cliffhanger" | "challenge" | "reveal";
   videoUrl: string | null;
   publishedAt: string;
+  isFollowedShow: boolean;
 };
+
+type FeedFilter = "allPublic" | "followedShows";
 
 const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
   {
@@ -36,6 +40,7 @@ const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
     episodeTitle: "Pilot Service",
     hookType: "question",
     id: "local-episode-1",
+    isFollowedShow: true,
     seasonNumber: 1,
     showCategory: "documentary",
     showDescription: "A serialized look at neighborhood cooks building a weekend pop-up.",
@@ -51,6 +56,7 @@ const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
     episodeTitle: "Rewrite at Midnight",
     hookType: "cliffhanger",
     id: "local-episode-2",
+    isFollowedShow: false,
     seasonNumber: 1,
     showCategory: "music",
     showDescription: "A rehearsal diary following a band as they write their first EP.",
@@ -66,6 +72,7 @@ const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
     episodeTitle: "The Missing Name",
     hookType: "reveal",
     id: "local-episode-3",
+    isFollowedShow: true,
     seasonNumber: 1,
     showCategory: "drama",
     showDescription: "A private concept show tracking scenes for a short-form mystery.",
@@ -85,6 +92,15 @@ const publicFeedEpisodes = [...placeholderFeedEpisodes]
   );
 
 export default function HomeScreen() {
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>("allPublic");
+  const visibleFeedEpisodes = useMemo(() => {
+    if (feedFilter === "followedShows") {
+      return publicFeedEpisodes.filter((item) => item.isFollowedShow);
+    }
+
+    return publicFeedEpisodes;
+  }, [feedFilter]);
+
   return (
     <ThemedView variant="screen" style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -93,90 +109,139 @@ export default function HomeScreen() {
           <ThemedText variant="body" style={styles.headerCopy}>
             Follow what happens next.
           </ThemedText>
+          <ThemedText variant="caption" style={styles.filterHelperText}>
+            Followed feed is local to this screen until account support is
+            connected.
+          </ThemedText>
+        </View>
+
+        <View style={styles.filterRow}>
+          <Pressable
+            onPress={() => {
+              setFeedFilter("allPublic");
+            }}
+            style={[
+              styles.filterButton,
+              feedFilter === "allPublic"
+                ? styles.filterButtonActive
+                : styles.filterButtonInactive,
+            ]}
+          >
+            <ThemedText variant="caption" style={styles.filterButtonText}>
+              All Public
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              setFeedFilter("followedShows");
+            }}
+            style={[
+              styles.filterButton,
+              feedFilter === "followedShows"
+                ? styles.filterButtonActive
+                : styles.filterButtonInactive,
+            ]}
+          >
+            <ThemedText variant="caption" style={styles.filterButtonText}>
+              Followed Shows
+            </ThemedText>
+          </Pressable>
         </View>
 
         <View style={styles.list}>
-          {publicFeedEpisodes.map((item) => (
-            <ThemedView key={item.id} variant="card" style={styles.card}>
-              <Pressable
-                onPress={() => {
-                  router.push({
-                    pathname: "/episodes/[episodeId]",
-                    params: {
-                      description: item.episodeDescription,
-                      episodeId: item.id,
-                      episodeNumber: String(item.episodeNumber),
-                      hookType: item.hookType,
-                      seasonNumber: String(item.seasonNumber),
-                      showCategory: item.showCategory,
-                      showDescription: item.showDescription,
-                      showId: item.showId,
-                      showTitle: item.showTitle,
-                      showVisibility: item.showVisibility,
-                      title: item.episodeTitle,
-                      videoUrl: item.videoUrl ?? undefined,
-                    },
-                  });
-                }}
-                style={styles.episodePressArea}
-              >
-                <ThemedText variant="caption" style={styles.seriesLabel}>
-                  Episode from
-                </ThemedText>
-
-                <View style={styles.showRow}>
-                  <ThemedText variant="subtitle" style={styles.showTitle}>
-                    {item.showTitle}
-                  </ThemedText>
-                  <ShowVisibilityBadge visibility={item.showVisibility} />
-                </View>
-
-                <View style={styles.cardHeader}>
-                  <ThemedText variant="caption" style={styles.episodeNumber}>
-                    Latest episode · {getEpisodeDisplayNumber(item)}
-                  </ThemedText>
-                  <ThemedText variant="subtitle" style={styles.cardTitle}>
-                    {item.episodeTitle}
-                  </ThemedText>
-                </View>
-
-                <ThemedText variant="body" style={styles.description}>
-                  {item.episodeDescription}
-                </ThemedText>
-
-                <View style={styles.metaRow}>
-                  <ThemedText variant="caption">{getEpisodeHookLabel(item.hookType)}</ThemedText>
-                  <ThemedText variant="caption">{getEpisodeVideoStatusLabel(item.videoUrl)}</ThemedText>
-                </View>
-
-                <View style={styles.metaRow}>
-                  <ThemedText variant="caption" style={styles.category}>
-                    {item.showCategory}
-                  </ThemedText>
-                </View>
-              </Pressable>
-
-              <Pressable
-                onPress={() => {
-                  router.push({
-                    pathname: "/shows/[showId]",
-                    params: {
-                      category: item.showCategory,
-                      description: item.showDescription,
-                      showId: item.showId,
-                      title: item.showTitle,
-                      visibility: item.showVisibility,
-                    },
-                  });
-                }}
-                style={styles.showActionButton}
-              >
-                <ThemedText variant="body" style={styles.showActionText}>
-                  View Show
-                </ThemedText>
-              </Pressable>
+          {visibleFeedEpisodes.length === 0 ? (
+            <ThemedView variant="card" style={styles.emptyStateCard}>
+              <ThemedText variant="body" style={styles.emptyStateText}>
+                No followed-show episodes yet in this local preview.
+              </ThemedText>
             </ThemedView>
-          ))}
+          ) : (
+            visibleFeedEpisodes.map((item) => (
+              <ThemedView key={item.id} variant="card" style={styles.card}>
+                <Pressable
+                  onPress={() => {
+                    router.push({
+                      pathname: "/episodes/[episodeId]",
+                      params: {
+                        description: item.episodeDescription,
+                        episodeId: item.id,
+                        episodeNumber: String(item.episodeNumber),
+                        hookType: item.hookType,
+                        seasonNumber: String(item.seasonNumber),
+                        showCategory: item.showCategory,
+                        showDescription: item.showDescription,
+                        showId: item.showId,
+                        showTitle: item.showTitle,
+                        showVisibility: item.showVisibility,
+                        title: item.episodeTitle,
+                        videoUrl: item.videoUrl ?? undefined,
+                      },
+                    });
+                  }}
+                  style={styles.episodePressArea}
+                >
+                  <ThemedText variant="caption" style={styles.seriesLabel}>
+                    Episode from
+                  </ThemedText>
+
+                  <View style={styles.showRow}>
+                    <ThemedText variant="subtitle" style={styles.showTitle}>
+                      {item.showTitle}
+                    </ThemedText>
+                    <ShowVisibilityBadge visibility={item.showVisibility} />
+                  </View>
+
+                  <View style={styles.cardHeader}>
+                    <ThemedText variant="caption" style={styles.episodeNumber}>
+                      Latest episode · {getEpisodeDisplayNumber(item)}
+                    </ThemedText>
+                    <ThemedText variant="subtitle" style={styles.cardTitle}>
+                      {item.episodeTitle}
+                    </ThemedText>
+                  </View>
+
+                  <ThemedText variant="body" style={styles.description}>
+                    {item.episodeDescription}
+                  </ThemedText>
+
+                  <View style={styles.metaRow}>
+                    <ThemedText variant="caption">
+                      {getEpisodeHookLabel(item.hookType)}
+                    </ThemedText>
+                    <ThemedText variant="caption">
+                      {getEpisodeVideoStatusLabel(item.videoUrl)}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <ThemedText variant="caption" style={styles.category}>
+                      {item.showCategory}
+                    </ThemedText>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    router.push({
+                      pathname: "/shows/[showId]",
+                      params: {
+                        category: item.showCategory,
+                        description: item.showDescription,
+                        showId: item.showId,
+                        title: item.showTitle,
+                        visibility: item.showVisibility,
+                      },
+                    });
+                  }}
+                  style={styles.showActionButton}
+                >
+                  <ThemedText variant="body" style={styles.showActionText}>
+                    View Show
+                  </ThemedText>
+                </Pressable>
+              </ThemedView>
+            ))
+          )}
         </View>
       </ScrollView>
     </ThemedView>
@@ -204,8 +269,38 @@ const styles = StyleSheet.create({
   description: {
     color: theme.colors.text.secondary,
   },
+  emptyStateCard: {
+    alignItems: "center",
+  },
+  emptyStateText: {
+    color: theme.colors.text.muted,
+  },
   episodePressArea: {
     gap: theme.spacing.md,
+  },
+  filterButton: {
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  filterButtonActive: {
+    backgroundColor: theme.colors.brand.primary,
+    borderColor: theme.colors.brand.primary,
+  },
+  filterButtonInactive: {
+    backgroundColor: theme.colors.background.elevated,
+    borderColor: theme.colors.border.subtle,
+  },
+  filterButtonText: {
+    fontWeight: theme.typography.weight.bold,
+  },
+  filterHelperText: {
+    color: theme.colors.text.muted,
+  },
+  filterRow: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
   },
   header: {
     gap: theme.spacing.sm,
