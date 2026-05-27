@@ -19,9 +19,9 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 7 — Previously On  
-Current Step: Step 7.4 — Show Recap Before Episode Playback  
-Status: Ready for Review
+Current Phase: Phase 9 — Monetization  
+Current Step: Step 9.1 — Define Monetization Strategy  
+Status: Not Started
 
 ## 4. Phase Roadmap
 
@@ -69,11 +69,13 @@ Goal: Help viewers resume serialized content.
 
 ### Phase 7 — Previously On
 
-Status: In Progress
+Status: Complete
 
 Goal: Help viewers understand ongoing Shows with recap support.
 
 ### Phase 8 — Creator Collaboration
+
+Status: Complete
 
 Goal: Add a Writers Room for co-creators and collaborative show planning.
 
@@ -2451,7 +2453,7 @@ Findings:
 
 ### Step 7.4 — Show Recap Before Episode Playback
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Place recap context before Episode playback or placeholder playback.
@@ -2493,20 +2495,27 @@ Findings:
 
 ## Phase 8 — Creator Collaboration
 
-### Step 8.1 — Define Writers Room Concept
+### Step 8.1 — Define Creator Collaboration / Writers Room Types
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Define the collaboration model for Show co-creators before implementation.
+Define app-facing, backend-agnostic Writers Room collaboration types for Show co-creators before implementation.
 
 Acceptance Criteria:
-- Writers Room roles and permissions are documented.
-- Collaboration boundaries are listed.
-- Implementation steps are added before code changes begin.
+- Collaboration/Writers Room types exist.
+- A reusable WritersRoom type is exported.
+- A reusable member/collaborator type is exported.
+- Role and status types are exported.
+- Collaboration references a Show through `showId`.
+- Member/collaborator references a user through `userId`.
+- Create/update input types are exported where helpful.
+- Types remain backend-agnostic and app-facing.
+- No UI, mock data, backend, database, Supabase, service/repository, auth, permission, or invitation behavior is added.
 
 Files Allowed:
 - `plan.md`
+- `types/collaboration.ts`
 
 Out of Scope:
 - Collaboration UI
@@ -2515,24 +2524,39 @@ Out of Scope:
 - Comments
 
 Verification:
-- Review documented roles and boundaries.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` and `types/collaboration.ts`.
 - Update next implementation steps.
 
-### Step 8.2 — Add Writers Room Data Types
+Findings:
+- Added shared app-facing collaboration types in `types/collaboration.ts` for Writers Room identity, metadata, members, role, and status.
+- Reused existing `ShowId`, `UserId`, and `ISODateString` from `types/show.ts` to keep ID/date semantics consistent across the app.
+- Added backend-agnostic input types for creating/updating Writers Rooms and adding/updating/removing Writers Room members.
+- Kept the model intentionally small and UI-consumable without introducing permissions enforcement, invitation behavior, services, repositories, persistence, or backend concerns.
+- No UI or route/screen behavior was added or changed.
+- No mock collaboration records were added.
+- No packages were installed.
 
-Status: Not Started
+### Step 8.2 — Add Writers Room Model Helpers
+
+Status: Complete
 
 Goal:
-Define types for Show collaborators and planning artifacts.
+Add lightweight app-facing Writers Room model helpers and options for future collaboration UI.
 
 Acceptance Criteria:
-- Collaborator type includes Show reference, user reference, role, and status.
-- Planning artifact types are minimal and Show-scoped.
-- Permissions are represented without backend assumptions.
+- `models/collaboration.ts` exists.
+- The file imports and uses collaboration types from `types/collaboration.ts`.
+- Role options and status options are exported.
+- Role/status label helpers are exported.
+- Default create/input helpers are exported where helpful.
+- Helpers are backend-agnostic and app-facing.
+- No UI, mock data, backend, database, Supabase, service/repository, auth, permission enforcement, or invitation behavior is added.
 
 Files Allowed:
-- `src/types/collaboration.ts`
-- `src/features/collaboration/`
+- `models/collaboration.ts`
 - `plan.md`
 
 Out of Scope:
@@ -2542,38 +2566,420 @@ Out of Scope:
 - Direct messaging
 
 Verification:
-- Run TypeScript check if available.
-- Confirm exports resolve.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` and `models/collaboration.ts`.
 - Update `plan.md`.
 
-### Step 8.3 — Add Writers Room Entry Point
+Findings:
+- Added shared app-facing Writers Room model helpers in `models/collaboration.ts` using types from `types/collaboration.ts`.
+- Exported role and member-status option arrays for future form/select UI usage.
+- Exported simple label helpers for roles and member statuses.
+- Exported default input helpers for create-room and add-member forms with backend-agnostic defaults.
+- Added a small descriptive role-capability helper intended for UI copy/state only, not permission enforcement.
+- No UI or route/screen behavior was added or changed.
+- No mock collaboration records were added.
+- No packages were installed.
 
-Status: Not Started
+### Step 8.3 — Create Writers Room Screen Placeholder
+
+Status: Complete
 
 Goal:
-Expose a Show-scoped entry point for collaboration.
+Add a UI-only Writers Room screen placeholder and Show detail entry action for future collaboration.
 
 Acceptance Criteria:
-- Eligible creators can access a Writers Room entry point from Show detail.
-- Ineligible viewers do not see creator-only controls.
-- Placeholder permission behavior is documented.
+- A UI-only Writers Room screen exists.
+- Show detail includes a clear Writers Room action.
+- Tapping the Writers Room action opens the Writers Room screen.
+- Writers Room screen receives or displays parent Show context.
+- Writers Room screen displays simple collaboration placeholder content.
+- Existing collaboration types/helpers are used where appropriate.
+- UI clearly communicates collaboration behavior will be connected later.
+- Existing Show detail content and actions remain intact.
+- No invitation behavior, permission enforcement, persistence, backend, database, Supabase, service/repository, auth, user identity, or global state logic is added.
 
 Files Allowed:
-- `src/features/collaboration/`
-- `src/features/shows/`
+- `app/shows/[showId]/writers-room.tsx`
 - `app/shows/[showId].tsx`
+- `app/_layout.tsx` only if needed for minimal stack route options
 - `plan.md`
 
 Out of Scope:
-- Real-time editing
+- Real-time collaborator invitations
+- Permission enforcement
+- Role-based access behavior
+- Backend collaboration state
+- Supabase setup
+- Database schema
+- Services/repositories
+- Persistence
+- Authentication
+- Real user identity
+- Global state/context
 - Chat
-- Comments
+- Scene drafts
+- Tasks
+- File uploads
 - Notifications
 
 Verification:
-- Run available checks.
-- Inspect creator and viewer states.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect Show detail Writers Room action and Writers Room route behavior.
 - Update `plan.md`.
+
+Findings:
+- Added a new UI-only Writers Room route at `app/shows/[showId]/writers-room.tsx` with placeholder sections for room overview, collaborators, roles, and future planning tools.
+- Added a clear `Open Writers Room` action on Show detail that routes to the Writers Room screen and passes temporary Show context params (`showId`, `title`, `description`, `category`, `visibility`).
+- Used collaboration model helpers (`writersRoomRoleOptions`, `writersRoomMemberStatusOptions`, `getWritersRoomRoleLabel`, `getWritersRoomMemberStatusLabel`) and collaboration types to shape placeholder display content.
+- Kept any temporary Writers Room member display records local to the Writers Room screen file.
+- Preserved existing Show detail edit, follow/follower count, Episode list, Create Episode, and Episode navigation behavior.
+- Added minimal stack route options for the Writers Room screen title.
+- No invitation behavior, permission enforcement, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added.
+- No packages were installed.
+
+### Step 8.4 — Define Writers Room Draft and Scene Types
+
+Status: Complete
+
+Goal:
+Define shared app-facing, backend-agnostic Writers Room draft and scene planning types for future collaborative episode planning.
+
+Acceptance Criteria:
+- Writers Room draft/scene types exist.
+- A reusable `WritersRoomDraft` type/interface is exported.
+- A reusable `WritersRoomScene` type/interface is exported.
+- Draft status/type unions are exported.
+- Scene type unions are exported.
+- Draft references a Writers Room through `writersRoomId`.
+- Draft references a Show through `showId`.
+- Scene references a draft through `draftId`.
+- Create/update input types are exported where helpful.
+- Types are backend-agnostic and app-facing.
+- No UI, mock data, backend, database, Supabase, service/repository, auth, permission enforcement, invitation behavior, ownership logic, persistence, or global state logic is added.
+
+Files Allowed:
+- `types/writersRoomDraft.ts`
+- `plan.md`
+
+Out of Scope:
+- Writers Room draft UI
+- Scene list UI
+- Ordered scene stitching UI
+- Chat/messages
+- Comments
+- Tasks
+- File uploads
+- Version history
+- Approval workflow
+- Permission enforcement
+- Role-based access behavior
+- Backend collaboration state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Mock draft/scene data
+- Authentication
+- Real user identity
+- Global state/context
+- Notifications
+
+Verification:
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` and `types/writersRoomDraft.ts`.
+- Update `plan.md`.
+
+Findings:
+- Added shared app-facing Writers Room draft and scene planning types in `types/writersRoomDraft.ts`.
+- Added draft identity, status/type unions, and create/update input contracts for future collaborative episode planning surfaces.
+- Added scene identity, scene-type union, and create/update input contracts for future ordered scene stitching surfaces.
+- Draft types reference `writersRoomId` and `showId`; scene types reference `draftId`.
+- Reused existing shared type aliases from `types/show.ts`, `types/episode.ts`, and `types/collaboration.ts` where appropriate.
+- Kept the types backend-agnostic with no persistence, services, repositories, or Supabase/database details.
+- No UI or route/screen behavior was added or changed.
+- No mock draft/scene records were added.
+- No packages were installed.
+
+### Step 8.5 — Add Writers Room Draft and Scene Model Helpers
+
+Status: Complete
+
+Goal:
+Add lightweight app-facing Writers Room draft and scene model helpers/options for future Writers Room planning UI.
+
+Acceptance Criteria:
+- `models/writersRoomDraft.ts` exists.
+- The file imports and uses draft/scene types from `types/writersRoomDraft.ts`.
+- Draft status/type options are exported.
+- Scene type options are exported.
+- Draft status/type label helpers are exported.
+- Scene type label helpers are exported.
+- Default create/input helpers are exported where helpful.
+- Scene ordering helper is exported where helpful.
+- Helpers are backend-agnostic and app-facing.
+- No UI, mock data, backend, database, Supabase, service/repository, auth, permission enforcement, invitation behavior, ownership logic, persistence, or global state logic is added.
+
+Files Allowed:
+- `models/writersRoomDraft.ts`
+- `plan.md`
+
+Out of Scope:
+- Writers Room draft UI
+- Scene list UI
+- Ordered scene stitching UI
+- Chat/messages
+- Comments
+- Tasks
+- File uploads
+- Version history
+- Approval workflow
+- Permission enforcement
+- Role-based access behavior
+- Backend collaboration state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Mock draft/scene data
+- Authentication
+- Real user identity
+- Global state/context
+- Notifications
+
+Verification:
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` and `models/writersRoomDraft.ts`.
+- Update `plan.md`.
+
+Findings:
+- Added shared app-facing Writers Room draft and scene model helpers in `models/writersRoomDraft.ts` using types from `types/writersRoomDraft.ts`.
+- Exported draft status/type options and scene type options for future UI controls.
+- Exported label helpers for draft status, draft type, and scene type values.
+- Exported default create input helpers for draft and scene creation forms.
+- Exported scene ordering helper and simple draft title normalization/validation helpers.
+- Kept helpers backend-agnostic with no persistence, services, repositories, or Supabase/database details.
+- No UI or route/screen behavior was added or changed.
+- No mock draft/scene records were added.
+- No packages were installed.
+
+### Step 8.6 — Display Drafts and Scenes on Writers Room Screen
+
+Status: Complete
+
+Goal:
+Update the existing UI-only Writers Room screen to display temporary draft and scene planning sections for collaborative episode planning.
+
+Acceptance Criteria:
+- Existing Writers Room screen displays draft planning content.
+- Existing Writers Room screen displays ordered scene content.
+- Temporary draft/scene data is local to `app/shows/[showId]/writers-room.tsx`.
+- Draft status/type labels use or align with helpers from `models/writersRoomDraft.ts`.
+- Scene type labels and ordering use or align with helpers from `models/writersRoomDraft.ts`.
+- Parent Show context remains visible.
+- Existing collaborator/role placeholder content remains intact or is only minimally adjusted.
+- UI clearly communicates drafts/scenes are temporary/local until collaboration persistence is connected.
+- No create/edit/delete behavior is added.
+- No drag/drop ordering is added.
+- No real collaboration behavior is added.
+- No permission enforcement is added.
+- No backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic is added.
+
+Files Allowed:
+- `plan.md`
+- `app/shows/[showId]/writers-room.tsx`
+
+Out of Scope:
+- Create draft UI
+- Edit draft UI
+- Delete draft UI
+- Create scene UI
+- Edit scene UI
+- Delete scene UI
+- Drag/drop scene ordering
+- Chat/messages
+- Comments
+- Tasks
+- File uploads
+- Version history
+- Approval workflow
+- Permission enforcement
+- Role-based access behavior
+- Backend collaboration state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Mock draft/scene data layer
+- Authentication
+- Real user identity
+- Global state/context
+- Notifications
+
+Verification:
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect updated `plan.md` status.
+- Inspect Writers Room draft/scene display and existing route behavior.
+
+Findings:
+- Updated the existing Writers Room screen with local temporary draft cards and ordered scene lists to simulate collaborative episode planning structure.
+- Kept temporary draft/scene data local to `app/shows/[showId]/writers-room.tsx` and did not introduce a shared mock data layer.
+- Used draft/scene types from `types/writersRoomDraft.ts` and helper functions from `models/writersRoomDraft.ts` for status/type labels, target formatting, scene-type labels, and scene ordering.
+- Preserved existing parent Show context display and existing collaborator/role placeholder sections.
+- Added clear UI copy indicating draft/scene content is local/temporary until persistence and collaboration wiring are added later.
+- No create/edit/delete controls, drag/drop ordering, permission enforcement, invitation behavior, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added.
+- No packages were installed.
+
+### Step 8.7 — Add UI-only Create Draft Support
+
+Status: Complete
+
+Goal:
+Add UI-only draft creation support on the existing Writers Room screen using local component state only.
+
+Acceptance Criteria:
+- Writers Room screen includes a UI-only Create Draft section.
+- User can locally enter draft title and summary.
+- User can locally select or view draft type.
+- User can locally select or view draft status.
+- User can locally enter target season and episode numbers.
+- Local draft title validation exists.
+- Create/save action is UI-only and does not persist data.
+- Existing draft list is not updated by the create form.
+- Existing scene list remains intact.
+- Existing collaborator/role placeholder content remains intact.
+- UI clearly communicates draft creation is temporary/local until persistence is connected.
+- No scene create/edit/delete behavior, drag/drop ordering, real collaboration behavior, permission enforcement, backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic is added.
+
+Files Allowed:
+- `plan.md`
+- `app/shows/[showId]/writers-room.tsx`
+
+Out of Scope:
+- Persisting drafts
+- Updating the displayed draft list after create
+- Create scene UI
+- Edit draft UI
+- Delete draft UI
+- Edit scene UI
+- Delete scene UI
+- Drag/drop scene ordering
+- Chat/messages
+- Comments
+- Tasks
+- File uploads
+- Version history
+- Approval workflow
+- Permission enforcement
+- Role-based access behavior
+- Backend collaboration state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Real user identity
+- Global state/context
+- Notifications
+
+Verification:
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect updated `plan.md` status.
+- Inspect Writers Room Create Draft section and existing draft/scene display.
+
+Findings:
+- Added a UI-only Create Draft form section to the existing Writers Room screen with local component state fields for title, summary, draft type, status, and target season/episode numbers.
+- Used draft helper exports from `models/writersRoomDraft.ts`, including default input generation, draft option arrays, title normalization, and title validation.
+- Added a local validation error for required draft title and a UI-only save result message that clearly indicates persistence will be connected later.
+- Kept draft creation non-persistent and did not update the existing displayed draft list after save.
+- Preserved existing draft/scene display, collaborator/role placeholders, and route/show-context behavior.
+- No scene create/edit/delete behavior, drag/drop ordering, backend, database, Supabase, service, repository, auth, user identity, permission enforcement, invitation behavior, persistence, or global state logic was added.
+- No packages were installed.
+
+### Step 8.8 — Add UI-only Create Scene Support
+
+Status: Complete
+
+Goal:
+Add UI-only scene creation support on the existing Writers Room screen using local component state only.
+
+Acceptance Criteria:
+- Writers Room screen includes a UI-only Create Scene section.
+- User can locally select or view the parent draft.
+- User can locally enter scene title and description.
+- User can locally select or view scene type.
+- User can locally enter or view scene order.
+- Local scene title validation exists.
+- Create/save action is UI-only and does not persist data.
+- Existing scene list is not updated by the create form.
+- Existing draft list remains intact.
+- Existing Create Draft section remains intact.
+- Existing collaborator/role placeholder content remains intact.
+- UI clearly communicates scene creation is temporary/local until persistence is connected.
+- No scene edit/delete behavior is added.
+- No draft edit/delete behavior is added.
+- No drag/drop ordering is added.
+- No real collaboration behavior is added.
+- No permission enforcement is added.
+- No backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic is added.
+
+Files Allowed:
+- `plan.md`
+- `app/shows/[showId]/writers-room.tsx`
+
+Out of Scope:
+- Persisting scenes
+- Updating the displayed scene list after create
+- Create/edit/delete draft behavior beyond existing UI-only Create Draft support
+- Edit scene UI
+- Delete scene UI
+- Drag/drop scene ordering
+- Chat/messages
+- Comments
+- Tasks
+- File uploads
+- Version history
+- Approval workflow
+- Permission enforcement
+- Role-based access behavior
+- Backend collaboration state
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Shared mock data layer
+- Authentication
+- Real user identity
+- Global state/context
+- Notifications
+
+Verification:
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect updated `plan.md` status.
+- Inspect Writers Room Create Scene section, existing draft/scene display, and existing Create Draft section.
+
+Findings:
+- Added a UI-only Create Scene form section to the existing Writers Room screen with local component state fields for parent draft, scene title, description, scene type, and order.
+- Used scene helper exports from `models/writersRoomDraft.ts`, including default input generation, scene type options, scene labels, and next-order calculation.
+- Added a local validation error for required scene title and a UI-only save result message that clearly indicates persistence will be connected later.
+- Kept scene creation non-persistent and did not update the existing displayed scene list after save.
+- Preserved existing Create Draft section, existing draft/scene display, collaborator/role placeholders, and route/show-context behavior.
+- No scene edit/delete behavior, draft edit/delete behavior, drag/drop ordering, backend, database, Supabase, service, repository, auth, user identity, permission enforcement, invitation behavior, persistence, or global state logic was added.
+- No packages were installed.
 
 ## Phase 9 — Monetization
 
@@ -2778,6 +3184,31 @@ Verification:
 | 2026-05-27 | Phase 7 — Previously On | Step 7.3 — Allow Recap Collapse/Skip | Complete | Product owner reviewed and passed local recap collapse/expand behavior on Episode detail. Step 7.4 was started to place recap before playback placeholder content. | `plan.md` | Confirmed Step 7.3 findings were recorded and no backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic was added. |
 | 2026-05-27 | Phase 7 — Previously On | Step 7.4 — Show Recap Before Episode Playback | In Progress | Started reordering Episode detail so Previously On appears before the video placeholder while preserving local recap toggle behavior. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 7.4 scope remains UI-only with no real playback, gating, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic. |
 | 2026-05-27 | Phase 7 — Previously On | Step 7.4 — Show Recap Before Episode Playback | Ready for Review | Moved Previously On ahead of video placeholder and added local placeholder flow copy/action while preserving recap conditional rendering, local collapse/expand, and existing poll/video behavior. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.4 — Show Recap Before Episode Playback | Complete | Product owner reviewed and passed recap-before-playback placeholder layout behavior. Phase 7 was marked complete and Phase 8 was started. | `plan.md` | Confirmed Step 7.4 findings were recorded and no backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.1 — Define Creator Collaboration / Writers Room Types | In Progress | Started defining app-facing, backend-agnostic Writers Room collaboration types and scoped input contracts. | `plan.md`, `types/collaboration.ts` | Confirmed Step 8.1 scope remains type-only with no UI, mock data, backend, database, Supabase, service, repository, auth, permission enforcement, or invitation behavior. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.1 — Define Creator Collaboration / Writers Room Types | Ready for Review | Added shared Writers Room collaboration, member, role/status, and create/update input types with Show/User references and reusable timestamp typing. | `plan.md`, `types/collaboration.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.1 — Define Creator Collaboration / Writers Room Types | Complete | Product owner reviewed and passed shared Writers Room collaboration type definitions. Step 8.2 was started for app-facing model helpers. | `plan.md` | Confirmed Step 8.1 findings were recorded and no UI, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or mock collaboration data was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.2 — Add Writers Room Model Helpers | In Progress | Started adding lightweight app-facing Writers Room model options, labels, and default input helpers. | `plan.md`, `models/collaboration.ts` | Confirmed Step 8.2 scope remains helper-only with no UI, mock data, backend, database, Supabase, service, repository, auth, permission enforcement, or invitation behavior. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.2 — Add Writers Room Model Helpers | Ready for Review | Added shared Writers Room role/status option arrays, role/status label helpers, backend-agnostic default input helpers, and a descriptive UI-facing role capability helper. | `plan.md`, `models/collaboration.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.2 — Add Writers Room Model Helpers | Complete | Product owner reviewed and passed app-facing Writers Room model helpers. Step 8.3 was started for the Show Writers Room placeholder UI surface. | `plan.md` | Confirmed Step 8.2 findings were recorded and no UI behavior, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or mock collaboration data layer was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.3 — Create Writers Room Screen Placeholder | In Progress | Started adding a Show-scoped Writers Room placeholder screen and Show detail entry action using temporary route params. | `plan.md`, `app/shows/[showId].tsx`, `app/shows/[showId]/writers-room.tsx`, `app/_layout.tsx` | Confirmed Step 8.3 scope remains UI-only with no invitation behavior, permission enforcement, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.3 — Create Writers Room Screen Placeholder | Ready for Review | Added a UI-only Writers Room screen with Show context, placeholder collaboration sections, and a Show detail `Open Writers Room` action while preserving existing Show detail actions and Episode navigation behavior. | `plan.md`, `app/shows/[showId].tsx`, `app/shows/[showId]/writers-room.tsx`, `app/_layout.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.3 — Create Writers Room Screen Placeholder | Complete | Product owner reviewed and passed the UI-only Writers Room screen placeholder and Show detail entry action. Step 8.4 was started for draft and scene planning types. | `plan.md` | Confirmed Step 8.3 findings were recorded and no invitation behavior, permission enforcement, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.4 — Define Writers Room Draft and Scene Types | In Progress | Started defining shared app-facing draft and scene type contracts for future Writers Room collaborative planning. | `plan.md`, `types/writersRoomDraft.ts` | Confirmed Step 8.4 scope remains type-only with no UI, mock data, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or persistence logic. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.4 — Define Writers Room Draft and Scene Types | Ready for Review | Added reusable Writers Room draft and scene types, status/type unions, and create/update input contracts with Writers Room/Show/draft references for future planning surfaces. | `plan.md`, `types/writersRoomDraft.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.4 — Define Writers Room Draft and Scene Types | Complete | Product owner reviewed and passed Writers Room draft and scene type definitions. Step 8.5 was started for draft/scene model helpers. | `plan.md` | Confirmed Step 8.4 findings were recorded and no UI, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, ownership logic, persistence, or global state logic was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.5 — Add Writers Room Draft and Scene Model Helpers | In Progress | Started adding lightweight app-facing helper options, labels, defaults, and ordering helpers for Writers Room drafts and scenes. | `plan.md`, `models/writersRoomDraft.ts` | Confirmed Step 8.5 scope remains helper-only with no UI, mock data, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or persistence logic. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.5 — Add Writers Room Draft and Scene Model Helpers | Ready for Review | Added reusable draft/scene options, labels, default create input helpers, scene ordering helper, and draft title normalization/validation helpers for future Writers Room planning UI. | `plan.md`, `models/writersRoomDraft.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.5 — Add Writers Room Draft and Scene Model Helpers | Complete | Product owner reviewed and passed Writers Room draft/scene model helpers. Step 8.6 was started to display drafts and scenes on the Writers Room screen. | `plan.md` | Confirmed Step 8.5 findings were recorded and no UI, mock draft/scene data, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, ownership logic, persistence, or global state logic was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.6 — Display Drafts and Scenes on Writers Room Screen | In Progress | Started extending the Writers Room placeholder UI with local temporary draft and scene planning sections. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Confirmed Step 8.6 scope remains UI-only with no create/edit/delete behavior, drag/drop ordering, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, persistence, or global state logic. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.6 — Display Drafts and Scenes on Writers Room Screen | Ready for Review | Added local temporary draft cards and ordered scene lists on the Writers Room screen with status/type labels and target episode copy using shared draft/scene helpers, while preserving existing Show context and collaborator/role placeholders. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.6 — Display Drafts and Scenes on Writers Room Screen | Complete | Product owner reviewed and passed UI-only draft and scene display on the Writers Room screen. Step 8.7 was started for UI-only create draft support. | `plan.md` | Confirmed Step 8.6 findings were recorded and no create/edit/delete behavior, drag/drop ordering, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, persistence, or global state logic was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.7 — Add UI-only Create Draft Support | In Progress | Started adding a local-only Create Draft form section to the Writers Room screen using existing draft helper options and validation. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Confirmed Step 8.7 scope remains UI-only with no persistence, list mutation, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or global state logic. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.7 — Add UI-only Create Draft Support | Ready for Review | Added local draft form state, title validation, draft type/status selections, target season/episode inputs, and a UI-only save action/message while preserving existing draft/scene display without updating it. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.7 — Add UI-only Create Draft Support | Complete | Product owner reviewed and passed UI-only Create Draft support on the Writers Room screen. Step 8.8 was started for UI-only Create Scene support. | `plan.md` | Confirmed Step 8.7 findings were recorded and no persistence, list mutation, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or global state logic was added. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.8 — Add UI-only Create Scene Support | In Progress | Started adding a local-only Create Scene form section to the Writers Room screen using existing scene helper options and ordering helpers. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Confirmed Step 8.8 scope remains UI-only with no persistence, scene-list mutation, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or global state logic. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.8 — Add UI-only Create Scene Support | Ready for Review | Added local scene form state, parent draft selection, title validation, scene type selection, order input/defaults, and a UI-only save action/message while preserving existing draft/scene display without updating it. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.8 — Add UI-only Create Scene Support | Complete | Product owner reviewed and passed UI-only Create Scene support on the Writers Room screen. Phase 8 was marked complete and Phase 9 was identified as the next planned phase. | `plan.md` | Confirmed Step 8.8 findings were recorded and no persistence, scene-list mutation, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or global state logic was added. |
 
 ## 7. Decisions Log
 
@@ -2832,6 +3263,14 @@ Verification:
 - Step 7.2 adds a UI-only Episode detail Previously On section that displays when temporary recap text exists and hides when missing. It does not add collapse/skip behavior, playback gating, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
 - Step 7.3 adds UI-only local recap collapse/expand controls on Episode detail. It does not add playback gating, forced recap-before-playback behavior, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
 - Step 7.4 reorders Episode detail to present recap before the video placeholder when recap exists, with UI-only placeholder flow copy. It does not add real playback, gating, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
+- Step 8.1 adds app-facing Writers Room collaboration types only. It does not add UI, mock collaboration data, backend, database, Supabase, services, repositories, auth, permissions enforcement, invitation behavior, persistence, or global state.
+- Step 8.2 adds app-facing Writers Room model helpers only. It does not add UI, mock collaboration data, backend, database, Supabase, services, repositories, auth, permissions enforcement, invitation behavior, persistence, or global state.
+- Step 8.3 adds a UI-only Show Writers Room placeholder route and navigation entry action. It does not add invitation behavior, permission enforcement, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
+- Step 8.4 adds shared app-facing Writers Room draft/scene planning types only. It does not add UI, mock draft/scene data, backend, database, Supabase, services, repositories, auth, permission enforcement, invitation behavior, ownership logic, persistence, or global state.
+- Step 8.5 adds shared app-facing Writers Room draft/scene model helpers only. It does not add UI, mock draft/scene data, backend, database, Supabase, services, repositories, auth, permission enforcement, invitation behavior, ownership logic, persistence, or global state.
+- Step 8.6 extends the UI-only Writers Room screen with local temporary draft/scene planning display sections. It does not add create/edit/delete behavior, drag/drop ordering, real collaboration behavior, permission enforcement, invitation behavior, backend, database, Supabase, services, repositories, auth, user identity, persistence, or global state.
+- Step 8.7 adds a UI-only local Create Draft form on the Writers Room screen. It does not persist drafts, update the displayed draft list, add scene CRUD, add drag/drop ordering, or add backend, database, Supabase, services, repositories, auth, user identity, permission enforcement, invitation behavior, or global state.
+- Step 8.8 adds a UI-only local Create Scene form on the Writers Room screen. It does not persist scenes, update the displayed scene list, add scene edit/delete behavior, add draft edit/delete behavior, add drag/drop ordering, or add backend, database, Supabase, services, repositories, auth, user identity, permission enforcement, invitation behavior, or global state.
 
 ## 9. Out of Scope Until Later
 
@@ -2848,4 +3287,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 7.4 — Show Recap Before Episode Playback is Ready for Review. After product owner approval, Step 7.4 can be marked Complete and Phase 7 can be reviewed for completion.
+Step 9.1 — Define Monetization Strategy is the next planned step and is currently Not Started.

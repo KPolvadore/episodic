@@ -168,6 +168,25 @@ export default function ShowDetailScreen() {
               Edit Show
             </ThemedText>
           </Pressable>
+          <Pressable
+            onPress={() => {
+              router.push({
+                pathname: "/shows/[showId]/writers-room",
+                params: {
+                  category,
+                  description,
+                  showId,
+                  title,
+                  visibility,
+                },
+              });
+            }}
+            style={styles.writersRoomButton}
+          >
+            <ThemedText variant="body" style={styles.writersRoomButtonText}>
+              Open Writers Room
+            </ThemedText>
+          </Pressable>
         </View>
 
         <ThemedView variant="card" style={styles.metaCard}>
@@ -408,5 +427,18 @@ const styles = StyleSheet.create({
   },
   videoStatusText: {
     color: theme.colors.text.secondary,
+  },
+  writersRoomButton: {
+    alignItems: "center",
+    backgroundColor: theme.colors.background.elevated,
+    borderColor: theme.colors.brand.secondary,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  writersRoomButtonText: {
+    color: theme.colors.brand.secondary,
+    fontWeight: theme.typography.weight.bold,
   },
 });
