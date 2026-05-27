@@ -17,6 +17,12 @@ import {
 } from "@/models/showFollow";
 import { showVisibilityOptions } from "@/models/show";
 import type { Episode } from "@/types/episode";
+import type {
+  CreatorSupportTier,
+  MonetizationFeature,
+  MonetizationStatus,
+  ShowPremiumAccess,
+} from "@/types/monetization";
 import type { ShowCategory, ShowVisibility } from "@/types/show";
 
 type ShowDetailParams = {
@@ -100,6 +106,35 @@ export default function ShowDetailScreen() {
   const [isFollowed, setIsFollowed] = useState(initialFollowState.isFollowed);
   const [followerCount, setFollowerCount] = useState(12);
   const followerCountLabel = getShowFollowerCountLabel(followerCount);
+  const monetizationStatus: MonetizationStatus = "draft";
+  const enabledMonetizationFeatures: MonetizationFeature[] = [
+    "creator_support",
+    "season_pass",
+    "premium_episode",
+  ];
+  const localCreatorSupportTier: CreatorSupportTier = {
+    id: `${showId}-support-tier-1`,
+    showId,
+    title: "Support this Show — coming later",
+    description:
+      "Creator support is a placeholder right now. No payment will be collected.",
+    amountCents: 499,
+    currency: "USD",
+    option: "one_time_tip",
+    isActive: true,
+  };
+  const localPremiumAccess: ShowPremiumAccess = {
+    id: `${showId}-season-pass`,
+    showId,
+    episodeId: null,
+    accessType: "season_pass",
+    title: "Premium access placeholder",
+    description:
+      "Season pass and premium access will be connected later. This is UI-only.",
+    amountCents: 999,
+    currency: "USD",
+    isActive: false,
+  };
 
   return (
     <ThemedView variant="screen" style={styles.screen}>
@@ -206,6 +241,49 @@ export default function ShowDetailScreen() {
               </ThemedText>
             ) : null}
           </View>
+        </ThemedView>
+
+        <ThemedView variant="card" style={styles.monetizationCard}>
+          <View style={styles.sectionHeader}>
+            <ThemedText variant="subtitle">Show Monetization</ThemedText>
+            <ThemedText variant="caption" style={styles.temporaryLabel}>
+              Placeholder only
+            </ThemedText>
+          </View>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Status: {monetizationStatus}
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Planned features: {enabledMonetizationFeatures.join(", ")}
+          </ThemedText>
+          <View style={styles.monetizationBlock}>
+            <ThemedText variant="body" style={styles.monetizationTitle}>
+              {localCreatorSupportTier.title}
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.mutedText}>
+              {localCreatorSupportTier.description}
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.mutedText}>
+              Suggested support amount: {localCreatorSupportTier.currency}{" "}
+              {(localCreatorSupportTier.amountCents / 100).toFixed(2)}
+            </ThemedText>
+          </View>
+          <View style={styles.monetizationBlock}>
+            <ThemedText variant="body" style={styles.monetizationTitle}>
+              {localPremiumAccess.title}
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.mutedText}>
+              {localPremiumAccess.description}
+            </ThemedText>
+            <ThemedText variant="caption" style={styles.mutedText}>
+              Access type: {localPremiumAccess.accessType.replace("_", " ")} ·{" "}
+              {localPremiumAccess.isActive ? "Unlocked" : "Locked placeholder"}
+            </ThemedText>
+          </View>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            No payments, subscriptions, or entitlements are active in this
+            screen.
+          </ThemedText>
         </ThemedView>
 
         <ThemedView variant="card" style={styles.episodeCard}>
@@ -399,6 +477,23 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     gap: theme.spacing.xs,
+  },
+  monetizationBlock: {
+    backgroundColor: theme.colors.background.elevated,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: theme.spacing.xs,
+    padding: theme.spacing.md,
+  },
+  monetizationCard: {
+    gap: theme.spacing.md,
+  },
+  monetizationTitle: {
+    fontWeight: theme.typography.weight.bold,
+  },
+  mutedText: {
+    color: theme.colors.text.muted,
   },
   metaValue: {
     color: theme.colors.brand.secondary,
