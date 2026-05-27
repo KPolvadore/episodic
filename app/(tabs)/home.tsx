@@ -8,11 +8,18 @@ import {
   getEpisodeVideoStatusLabel,
 } from "@/models/episode";
 import { isShowPublic } from "@/models/show";
+import {
+  getNextUnwatchedEpisode,
+  getWatchedEpisodeProgressLabel,
+  isEpisodeCompleted,
+} from "@/models/watchedEpisode";
 import { ShowVisibilityBadge } from "@/components/ShowVisibilityBadge";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { theme } from "@/constants/theme";
 import type { ShowCategory, ShowVisibility } from "@/types/show";
+import type { Episode } from "@/types/episode";
+import type { WatchedEpisode } from "@/types/watchedEpisode";
 
 type PlaceholderFeedEpisode = {
   id: string;
@@ -32,6 +39,70 @@ type PlaceholderFeedEpisode = {
 };
 
 type FeedFilter = "allPublic" | "followedShows";
+
+type ContinueWatchingSeed = {
+  id: string;
+  showId: string;
+  showTitle: string;
+  watchedEpisodes: WatchedEpisode[];
+};
+
+type EpisodeDetailRouteParamsInput = {
+  description: string;
+  episodeId: string;
+  episodeNumber: number;
+  hookType: PlaceholderFeedEpisode["hookType"];
+  seasonNumber: number;
+  showCategory: ShowCategory;
+  showDescription: string;
+  showId: string;
+  showTitle: string;
+  showVisibility: ShowVisibility;
+  title: string;
+  videoUrl: string | null;
+};
+
+function buildEpisodeDetailRouteParams(input: EpisodeDetailRouteParamsInput) {
+  return {
+    description: input.description,
+    episodeId: input.episodeId,
+    episodeNumber: String(input.episodeNumber),
+    hookType: input.hookType,
+    seasonNumber: String(input.seasonNumber),
+    showCategory: input.showCategory,
+    showDescription: input.showDescription,
+    showId: input.showId,
+    showTitle: input.showTitle,
+    showVisibility: input.showVisibility,
+    title: input.title,
+    videoUrl: input.videoUrl ?? undefined,
+  };
+}
+
+function deduplicateContinueWatchingSeedsByShow(
+  seeds: readonly ContinueWatchingSeed[],
+) {
+  const seedsByShowId = new Map<string, ContinueWatchingSeed>();
+
+  seeds.forEach((seed) => {
+    const existing = seedsByShowId.get(seed.showId);
+
+    if (!existing) {
+      seedsByShowId.set(seed.showId, {
+        ...seed,
+        watchedEpisodes: [...seed.watchedEpisodes],
+      });
+      return;
+    }
+
+    existing.watchedEpisodes = [
+      ...existing.watchedEpisodes,
+      ...seed.watchedEpisodes,
+    ];
+  });
+
+  return [...seedsByShowId.values()];
+}
 
 const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
   {
@@ -91,6 +162,71 @@ const publicFeedEpisodes = [...placeholderFeedEpisodes]
       new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime(),
   );
 
+const continueWatchingEpisodes: Episode[] = placeholderFeedEpisodes.map((item) => ({
+  createdAt: item.publishedAt,
+  description: item.episodeDescription,
+  episodeNumber: item.episodeNumber,
+  hookType: item.hookType,
+  id: item.id,
+  seasonNumber: item.seasonNumber,
+  showId: item.showId,
+  thumbnailUrl: null,
+  title: item.episodeTitle,
+  updatedAt: item.publishedAt,
+  videoUrl: item.videoUrl,
+}));
+
+const continueWatchingEpisodeDetailsById = new Map(
+  placeholderFeedEpisodes.map((item) => [item.id, item] as const),
+);
+
+const placeholderContinueWatchingSeeds: ContinueWatchingSeed[] = [
+  {
+    id: "continue-local-1",
+    showId: "local-show-1",
+    showTitle: "Kitchen After Hours",
+    watchedEpisodes: [
+      {
+        completed: true,
+        durationSeconds: 900,
+        episodeId: "local-episode-1",
+        id: "watched-local-1",
+        progressSeconds: 900,
+        showId: "local-show-1",
+        userId: "local-user-1",
+        watchedAt: "2026-05-26T14:00:00.000Z",
+      },
+    ],
+  },
+  {
+    id: "continue-local-2",
+    showId: "local-show-2",
+    showTitle: "Basement Sessions",
+    watchedEpisodes: [
+      {
+        completed: false,
+        durationSeconds: 1200,
+        episodeId: "local-episode-2",
+        id: "watched-local-2",
+        progressSeconds: 420,
+        showId: "local-show-2",
+        userId: "local-user-1",
+        watchedAt: "2026-05-26T16:10:00.000Z",
+      },
+    ],
+  },
+  {
+    id: "continue-local-3",
+    showId: "local-show-2",
+    showTitle: "Basement Sessions",
+    watchedEpisodes: [],
+  },
+];
+
+const deduplicatedContinueWatchingSeeds = deduplicateContinueWatchingSeedsByShow(
+  placeholderContinueWatchingSeeds,
+);
+
 export default function HomeScreen() {
   const [feedFilter, setFeedFilter] = useState<FeedFilter>("allPublic");
   const visibleFeedEpisodes = useMemo(() => {
@@ -100,6 +236,53 @@ export default function HomeScreen() {
 
     return publicFeedEpisodes;
   }, [feedFilter]);
+  const continueWatchingItems = useMemo(() => {
+    return deduplicatedContinueWatchingSeeds
+      .map((seed) => {
+        const nextEpisode = getNextUnwatchedEpisode(
+          continueWatchingEpisodes,
+          seed.watchedEpisodes,
+          seed.showId,
+        );
+
+        if (!nextEpisode) {
+          return null;
+        }
+
+        const details = continueWatchingEpisodeDetailsById.get(nextEpisode.id);
+
+        if (!details) {
+          return null;
+        }
+
+        const matchingWatchRecord = seed.watchedEpisodes.find(
+          (record) =>
+            record.episodeId === nextEpisode.id &&
+            !isEpisodeCompleted({
+              completed: record.completed,
+              durationSeconds: record.durationSeconds,
+              progressSeconds: record.progressSeconds,
+            }),
+        );
+
+        const progressLabel = matchingWatchRecord
+          ? getWatchedEpisodeProgressLabel({
+              completed: matchingWatchRecord.completed,
+              durationSeconds: matchingWatchRecord.durationSeconds,
+              progressSeconds: matchingWatchRecord.progressSeconds,
+            })
+          : "Not started yet";
+
+        return {
+          details,
+          id: seed.id,
+          nextEpisode,
+          progressLabel,
+          showTitle: seed.showTitle,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  }, []);
 
   return (
     <ThemedView variant="screen" style={styles.screen}>
@@ -148,6 +331,62 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.continueWatchingSection}>
+          <ThemedText variant="subtitle">Continue Watching</ThemedText>
+          <ThemedText variant="caption" style={styles.continueWatchingHelperText}>
+            Local preview only. Continue Watching progress is temporary on this
+            screen until account support is connected.
+          </ThemedText>
+
+          {continueWatchingItems.length === 0 ? (
+            <ThemedView variant="card" style={styles.emptyStateCard}>
+              <ThemedText variant="body" style={styles.emptyStateText}>
+                No local Continue Watching items yet.
+              </ThemedText>
+            </ThemedView>
+          ) : (
+            continueWatchingItems.map((item) => (
+              <ThemedView key={item.id} variant="card" style={styles.card}>
+                <Pressable
+                  onPress={() => {
+                    router.push({
+                      pathname: "/episodes/[episodeId]",
+                      params: buildEpisodeDetailRouteParams({
+                        description: item.nextEpisode.description,
+                        episodeId: item.nextEpisode.id,
+                        episodeNumber: item.nextEpisode.episodeNumber,
+                        hookType: item.nextEpisode.hookType,
+                        seasonNumber: item.nextEpisode.seasonNumber,
+                        showCategory: item.details.showCategory,
+                        showDescription: item.details.showDescription,
+                        showId: item.nextEpisode.showId,
+                        showTitle: item.details.showTitle,
+                        showVisibility: item.details.showVisibility,
+                        title: item.nextEpisode.title,
+                        videoUrl: item.nextEpisode.videoUrl,
+                      }),
+                    });
+                  }}
+                  style={styles.episodePressArea}
+                >
+                  <ThemedText variant="caption" style={styles.seriesLabel}>
+                    {item.showTitle}
+                  </ThemedText>
+                  <ThemedText variant="subtitle" style={styles.cardTitle}>
+                    {item.nextEpisode.title}
+                  </ThemedText>
+                  <ThemedText variant="caption" style={styles.episodeNumber}>
+                    Next up · {getEpisodeDisplayNumber(item.nextEpisode)}
+                  </ThemedText>
+                  <ThemedText variant="caption" style={styles.continueWatchingProgress}>
+                    {item.progressLabel}
+                  </ThemedText>
+                </Pressable>
+              </ThemedView>
+            ))
+          )}
+        </View>
+
         <View style={styles.list}>
           {visibleFeedEpisodes.length === 0 ? (
             <ThemedView variant="card" style={styles.emptyStateCard}>
@@ -162,20 +401,20 @@ export default function HomeScreen() {
                   onPress={() => {
                     router.push({
                       pathname: "/episodes/[episodeId]",
-                      params: {
+                      params: buildEpisodeDetailRouteParams({
                         description: item.episodeDescription,
                         episodeId: item.id,
-                        episodeNumber: String(item.episodeNumber),
+                        episodeNumber: item.episodeNumber,
                         hookType: item.hookType,
-                        seasonNumber: String(item.seasonNumber),
+                        seasonNumber: item.seasonNumber,
                         showCategory: item.showCategory,
                         showDescription: item.showDescription,
                         showId: item.showId,
                         showTitle: item.showTitle,
                         showVisibility: item.showVisibility,
                         title: item.episodeTitle,
-                        videoUrl: item.videoUrl ?? undefined,
-                      },
+                        videoUrl: item.videoUrl,
+                      }),
                     });
                   }}
                   style={styles.episodePressArea}
@@ -265,6 +504,15 @@ const styles = StyleSheet.create({
   content: {
     gap: theme.spacing.xl,
     paddingBottom: theme.spacing["3xl"],
+  },
+  continueWatchingHelperText: {
+    color: theme.colors.text.muted,
+  },
+  continueWatchingProgress: {
+    color: theme.colors.text.secondary,
+  },
+  continueWatchingSection: {
+    gap: theme.spacing.md,
   },
   description: {
     color: theme.colors.text.secondary,
