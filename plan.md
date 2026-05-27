@@ -19,8 +19,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 5 — Audience Interaction  
-Current Step: Step 5.5 — Show Poll Results  
+Current Phase: Phase 6 — Continue Watching  
+Current Step: Step 6.5 — Route to Correct Episode  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
@@ -57,11 +57,13 @@ Goal: Let users follow Shows and build a Show-based social graph.
 
 ### Phase 5 — Audience Interaction
 
-Status: In Progress
+Status: Complete
 
 Goal: Let viewers influence what happens next through polls and choices.
 
 ### Phase 6 — Continue Watching
+
+Status: In Progress
 
 Goal: Help viewers resume serialized content.
 
@@ -2018,7 +2020,7 @@ Findings:
 
 ### Step 5.5 — Show Poll Results
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Show poll results after voting or when a poll is closed.
@@ -2054,151 +2056,269 @@ Findings:
 
 ## Phase 6 — Continue Watching
 
+Status: In Progress
+
 ### Step 6.1 — Track Watched Episodes
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Track which Episodes a viewer has watched.
+Prepare app-facing watched Episode tracking shapes and helpers for future Continue Watching work.
 
 Acceptance Criteria:
-- Watched Episode type or state exists.
-- Episode detail can mark an Episode watched.
-- Tracking is scoped to a placeholder user if auth is not complete.
-- Data model supports future backend persistence.
+- Watched Episode types exist.
+- A reusable `WatchedEpisode` type is exported.
+- Create/update/progress input types are exported where helpful.
+- Watched Episode references `episodeId`, `showId`, and `userId`.
+- App-facing progress helper(s) remain backend-agnostic.
+- No UI is added.
+- No mock watched records are added.
+- No backend, database, Supabase, service, repository, auth, or real user identity logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/types/watch.ts`
-- `src/features/watch/`
-- `src/features/episodes/`
+- `types/watchedEpisode.ts`
+- `models/watchedEpisode.ts`
 - `plan.md`
 
 Out of Scope:
-- Playback progress timing
+- Continue Watching UI
+- Tracking real video progress
 - Notifications
 - Recommendations
 - Analytics
 
 Verification:
-- Run available checks.
-- Mark an Episode watched.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md`, `types/watchedEpisode.ts`, and `models/watchedEpisode.ts`.
 - Update `plan.md`.
+
+Findings:
+- Added `types/watchedEpisode.ts` with backend-agnostic watched Episode shapes: `WatchedEpisodeId`, `WatchedEpisodeProgress`, `WatchedEpisode`, `CreateWatchedEpisodeInput`, `UpdateWatchedEpisodeProgressInput`, and `WatchedEpisodeState`.
+- Reused existing shared aliases for relationships and timestamps via `EpisodeId`, `ShowId`, `UserId`, and `ISODateString`.
+- Added `models/watchedEpisode.ts` with small app-facing helpers: `getWatchProgressPercent`, `isEpisodeCompleted`, `getInitialWatchedEpisodeState`, and `getWatchedEpisodeProgressLabel`.
+- Helpers are pure and backend-agnostic and do not include persistence, fetch/create/update/delete methods, services, repositories, auth, or user identity logic.
+- No UI routes/screens were modified.
+- No mock watched Episode records were added.
+- No packages were installed.
 
 ### Step 6.2 — Determine Next Unwatched Episode
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Identify the next Episode a viewer should watch for each Show.
+Add backend-agnostic helpers that determine the next unwatched Episode for a Show.
 
 Acceptance Criteria:
-- Utility returns the next unwatched Episode by Show.
+- A helper exists to determine the next unwatched Episode.
+- Helper uses `Episode` and `WatchedEpisode` types where appropriate.
 - Ordering respects season and episode number.
-- Completed Shows are handled.
-- Missing watch state is handled.
+- Returns the first ordered Episode when no watched records exist.
+- Returns the next unwatched Episode when some Episodes are completed.
+- Returns `null` when all Episodes are watched/completed.
+- Logic is backend-agnostic and uses only function inputs.
+- No UI is added.
+- No mock watched records are added.
+- No backend, database, Supabase, service, repository, auth, or user identity logic is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/watch/`
-- `src/features/episodes/`
+- `models/watchedEpisode.ts`
 - `plan.md`
 
 Out of Scope:
-- UI sections
+- Continue Watching UI
+- Tracking real video progress
 - Recommendations
 - Notifications
 - Autoplay
 
 Verification:
-- Run available checks.
-- Confirm next Episode logic with multiple watch states.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` and `models/watchedEpisode.ts`.
 - Update `plan.md`.
+
+Findings:
+- Updated `models/watchedEpisode.ts` with backend-agnostic next-unwatched helpers that operate only on passed-in arrays and ids.
+- Added `sortEpisodesBySeasonAndEpisode` to enforce season/episode ordering.
+- Added `getCompletedEpisodeIds` to derive completed watched episodes for a show using existing completion rules.
+- Added `isEpisodeWatched` for set-based completion lookup by `episodeId`.
+- Added `getNextUnwatchedEpisode` to return the first ordered episode not marked completed, or `null` if all episodes for the show are completed.
+- Helpers use existing `Episode`, `EpisodeId`, `ShowId`, and `WatchedEpisode` types.
+- No UI routes/screens were modified.
+- No mock watched records were added.
+- No packages were installed.
 
 ### Step 6.3 — Add Continue Watching Section
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Add a section that helps viewers resume Shows.
+Add a UI-only Continue Watching section to Home using local temporary data and watched Episode helpers.
 
 Acceptance Criteria:
-- Continue Watching section appears on the Home feed or appropriate tab.
-- Section shows next unwatched Episodes.
-- Empty state is present.
-- Show context is visible.
+- Home displays a UI-only Continue Watching section.
+- Continue Watching uses temporary local data only.
+- Temporary Continue Watching data remains local to `app/(tabs)/home.tsx`.
+- Continue Watching uses watched Episode helper logic where appropriate.
+- Each item displays Show title, next Episode title, season/episode number, and progress/status text.
+- Existing Home feed remains intact.
+- Existing public/all and followed feed filters remain intact.
+- Existing feed-to-Episode navigation remains intact.
+- Existing feed-to-Show navigation remains intact.
+- No deduplication-by-Show logic is added yet.
+- No persistence, backend, Supabase, service, repository, auth, user identity, global state, or real video progress tracking is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/watch/`
-- `src/features/feed/`
-- `app/(tabs)/index.tsx`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
-- Push notifications
-- Advanced recommendations
-- Playback progress bars unless separately planned
-- Ads
+- Deduplicating Continue Watching by Show
+- Persisting watched progress
+- Real video progress tracking
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Real user identity
+- Global state/context
+- Feed algorithm changes
+- Notifications
 
 Verification:
-- Run available checks.
-- Inspect Continue Watching behavior.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` status updates and `app/(tabs)/home.tsx`.
+- Confirm existing Home feed/filter/navigation behavior remains intact.
 - Update `plan.md`.
+
+Findings:
+- Updated `app/(tabs)/home.tsx` with a UI-only Continue Watching section placed above the existing Home feed list.
+- Kept temporary Continue Watching data local to `app/(tabs)/home.tsx` via local seed arrays for Episodes and watched records.
+- Used backend-agnostic watched helpers (`getNextUnwatchedEpisode`, `isEpisodeCompleted`, and `getWatchedEpisodeProgressLabel`) to compute next-up items and progress labels.
+- Rendered Continue Watching rows with Show title, next Episode title, season/episode label, and progress/status text.
+- Included local helper copy clarifying Continue Watching progress is temporary and account-connected behavior is added later.
+- Continue Watching rows safely navigate to the existing Episode detail route with temporary params.
+- Preserved existing Home feed behavior, including public/all and followed filters, feed-to-Episode navigation, and feed-to-Show navigation.
+- Did not add deduplication-by-Show logic yet.
+- Did not add persistence, backend, database, Supabase, service, repository, auth, user identity, global state, real video progress tracking, or package installation.
 
 ### Step 6.4 — Deduplicate Continue Watching by Show
 
-Status: Not Started
+Status: Complete
 
 Goal:
-Ensure Continue Watching shows one next Episode per Show.
+Update Home Continue Watching so it renders one next-up item per Show using local temporary data.
 
 Acceptance Criteria:
-- Section does not show multiple Episodes from the same Show.
-- The selected Episode is the earliest unwatched Episode.
-- Completed Shows are omitted or clearly marked.
+- Continue Watching displays one item per Show.
+- Deduplication is based on `showId`.
+- The remaining item for each Show represents the next relevant unwatched Episode.
+- Continue Watching stays local/data-temporary in `app/(tabs)/home.tsx`.
+- Existing Continue Watching navigation remains intact.
+- Existing Home feed, filters, and feed navigation remain intact.
+- No persistence, backend, Supabase, service, repository, auth, user identity, global state, or real video progress tracking is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/watch/`
-- `src/features/feed/`
+- `app/(tabs)/home.tsx`
 - `plan.md`
 
 Out of Scope:
-- Recommendation ranking
+- Persisting watched progress
+- Real video progress tracking
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Real user identity
+- Global state/context
+- Feed algorithm changes
 - Notifications
-- Creator analytics
-- Playback queues
+- Installing packages
 
 Verification:
-- Run available checks.
-- Confirm one item per Show.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` status updates and `app/(tabs)/home.tsx`.
+- Confirm Continue Watching renders one item per Show.
+- Confirm existing Home feed/filter/navigation behavior remains intact.
 - Update `plan.md`.
+
+Findings:
+- Updated `app/(tabs)/home.tsx` with a small local helper that deduplicates Continue Watching seeds by `showId`.
+- Deduplication keeps data local to Home and merges watched records per show before selecting the next unwatched Episode.
+- Continue Watching now computes at most one next-up item per Show via existing backend-agnostic watched helpers.
+- Continue Watching display and Episode-detail navigation behavior were preserved.
+- Existing Home feed list, all-public/followed filters, feed-to-Episode navigation, and feed-to-Show navigation were preserved.
+- No persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking was added.
+- No packages were installed.
 
 ### Step 6.5 — Route to Correct Episode
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
-Open the correct next Episode from Continue Watching.
+Verify and refine Continue Watching navigation so each deduplicated item routes to the correct next unwatched Episode.
 
 Acceptance Criteria:
-- Tapping Continue Watching opens the expected Episode detail.
-- Route includes correct Episode identity.
-- Missing Episode state remains handled.
+- Continue Watching item press opens the existing Episode detail screen.
+- Episode detail displays the correct next unwatched Episode for the selected Continue Watching item.
+- Continue Watching route params match the selected next unwatched Episode.
+- Continue Watching remains deduplicated by Show.
+- Continue Watching data remains local to `app/(tabs)/home.tsx`.
+- Existing Home feed/filter/navigation behavior remains intact.
+- No persistence, backend, Supabase, service, repository, auth, user identity, global state, or real video progress tracking is added.
+- No packages are installed.
 
 Files Allowed:
-- `src/features/watch/`
-- `src/features/feed/`
-- `app/(tabs)/index.tsx`
+- `app/(tabs)/home.tsx`
+- `app/episodes/[episodeId].tsx` only if a minimal compatibility fix is required
 - `plan.md`
 
 Out of Scope:
-- Autoplay
+- Persisting watched progress
+- Real video progress tracking
+- Supabase setup
+- Database schema
+- Services
+- Repositories
+- Authentication
+- Real user identity
+- Global state/context
+- Feed algorithm changes
 - Notifications
-- Recommendations
-- Poll prioritization
+- Installing packages
 
 Verification:
-- Run available checks.
-- Navigate from Continue Watching to Episode detail.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md` status updates and `app/(tabs)/home.tsx`.
+- Verify Continue Watching routing params map to the selected next unwatched Episode values.
+- Verify Episode detail renders correctly from Continue Watching params.
+- Confirm existing Home feed/filter/navigation behavior remains intact.
 - Update `plan.md`.
+
+Findings:
+- Verified Continue Watching selection still uses the deduplicated Show item and the next unwatched Episode chosen by backend-agnostic watched helpers.
+- Added a small local route-param builder in `app/(tabs)/home.tsx` so Continue Watching and feed Episode navigation both send consistent temporary Episode-detail params.
+- Confirmed Continue Watching params include Episode identity/title/description/ordering/hook/video and Show context values used by Episode detail.
+- Confirmed Episode detail compatibility already existed; no `app/episodes/[episodeId].tsx` changes were required.
+- Continue Watching remains deduplicated by Show and local to Home.
+- Existing Home feed list, All Public/Followed filters, feed-to-Episode navigation, and feed-to-Show navigation were preserved.
+- No persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking was added.
+- No packages were installed.
 
 ## Phase 7 — Previously On
 
@@ -2574,6 +2694,21 @@ Verification:
 | 2026-05-26 | Phase 5 — Audience Interaction | Step 5.4 — Allow One Vote Per User | Complete | Product owner reviewed and passed local one-vote selection and submission lock behavior on Episode detail. Step 5.5 was started to show local poll results after voting. | `plan.md` | Confirmed Step 5.4 findings were recorded and no results, persistence, backend, database, Supabase, service, repository, auth, ownership, or Create Episode poll-state coupling was added. |
 | 2026-05-26 | Phase 5 — Audience Interaction | Step 5.5 — Show Poll Results | In Progress | Started adding UI-only local poll results display that appears after local vote submission on Episode detail. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 5.5 scope remains local UI-only with no persistence, real user identity, backend, database, Supabase, service, repository, auth, or ownership logic. |
 | 2026-05-26 | Phase 5 — Audience Interaction | Step 5.5 — Show Poll Results | Ready for Review | Added local post-vote results with simple counts/percentages and selected-option indication while keeping pre-vote results hidden and all data local/non-persistent. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 5 — Audience Interaction | Step 5.5 — Show Poll Results | Complete | Product owner reviewed and passed local poll results behavior on Episode detail. Phase 5 was marked complete and Phase 6 was started with watched Episode tracking types/helpers. | `plan.md` | Confirmed Step 5.5 findings were recorded and no persistence, backend, database, Supabase, service, repository, auth, ownership, or user identity logic was added. |
+| 2026-05-26 | Phase 6 — Continue Watching | Step 6.1 — Track Watched Episodes | In Progress | Started defining shared backend-agnostic watched Episode types and lightweight app-facing progress helpers for future Continue Watching UI. | `plan.md`, `types/watchedEpisode.ts`, `models/watchedEpisode.ts` | Confirmed Step 6.1 scope is type/model-only with no UI, mock watched records, persistence, backend, database, Supabase, service, repository, auth, or user identity logic. |
+| 2026-05-26 | Phase 6 — Continue Watching | Step 6.1 — Track Watched Episodes | Ready for Review | Added shared watched Episode identity/progress/input/state types and reusable progress/completion/label helpers, keeping all logic app-facing and backend-agnostic. | `plan.md`, `types/watchedEpisode.ts`, `models/watchedEpisode.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-26 | Phase 6 — Continue Watching | Step 6.1 — Track Watched Episodes | Complete | Product owner reviewed and passed watched Episode tracking types and helper groundwork. Step 6.2 was started to determine the next unwatched Episode by Show. | `plan.md` | Confirmed Step 6.1 findings were recorded and no UI, backend, database, Supabase, service, repository, auth, user identity, persistence, or mock watched records were added. |
+| 2026-05-26 | Phase 6 — Continue Watching | Step 6.2 — Determine Next Unwatched Episode | In Progress | Started adding backend-agnostic helper logic to derive the next unwatched Episode from local Episode and WatchedEpisode arrays. | `plan.md`, `models/watchedEpisode.ts` | Confirmed Step 6.2 scope remains helper-only with no UI, mock watched records, backend, database, Supabase, service, repository, auth, user identity, or persistence logic. |
+| 2026-05-26 | Phase 6 — Continue Watching | Step 6.2 — Determine Next Unwatched Episode | Ready for Review | Added show-scoped ordering/completion helpers and next-unwatched selection logic that returns the first unwatched ordered episode or `null` when all are completed. | `plan.md`, `models/watchedEpisode.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.2 — Determine Next Unwatched Episode | Complete | Product owner reviewed and passed next-unwatched helper logic. Step 6.3 was started to add a Home Continue Watching section with local temporary data. | `plan.md` | Confirmed Step 6.2 findings were recorded and no UI, persistence, backend, database, Supabase, service, repository, auth, user identity, or mock watched records were added. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.3 — Add Continue Watching Section | In Progress | Started adding a UI-only Continue Watching section on Home using local temporary data and existing watched helpers. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed Step 6.3 scope remains local UI-only with no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.3 — Add Continue Watching Section | Ready for Review | Added a Home Continue Watching section above the feed, rendering local next-up items with show context, episode numbering, progress/status labels, and safe Episode-detail navigation while preserving existing feed/filter behavior. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.3 — Add Continue Watching Section | Complete | Product owner reviewed and passed the UI-only Home Continue Watching section. Step 6.4 was started to deduplicate Continue Watching to one item per Show. | `plan.md` | Confirmed Step 6.3 findings were recorded and no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking was added. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.4 — Deduplicate Continue Watching by Show | In Progress | Started deduplicating Continue Watching by Show using local temporary Home data and existing watched helpers. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed Step 6.4 scope remains local UI-only with no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.4 — Deduplicate Continue Watching by Show | Ready for Review | Added local show-based Continue Watching deduplication so Home now resolves one next-up Episode per Show while preserving existing Home feed/filter/navigation behavior. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.4 — Deduplicate Continue Watching by Show | Complete | Product owner reviewed and passed show-based Continue Watching deduplication. Step 6.5 was started to verify/refine routing to the correct next unwatched Episode. | `plan.md` | Confirmed Step 6.4 findings were recorded and no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking was added. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.5 — Route to Correct Episode | In Progress | Started verifying and refining Continue Watching route params so each deduplicated Show item opens the correct next unwatched Episode detail state. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed Step 6.5 scope remains local UI-only with no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.5 — Route to Correct Episode | Ready for Review | Added a shared local route-param builder for Home Episode navigation and confirmed Continue Watching opens the selected next unwatched Episode with complete temporary Episode/Show params. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -2619,6 +2754,11 @@ Verification:
 - Step 5.3 adds a UI-only poll display section on Episode detail with local temporary poll content only. It does not add voting behavior, poll results, Create Episode poll-state coupling, persistence, backend, database, Supabase, service, repository, auth, ownership, or a shared mock poll data layer.
 - Step 5.4 adds UI-only local one-vote selection and submission lock behavior on Episode detail. It does not add poll results, vote counts, percentages, real user identity, persistence, Create Episode poll-state coupling, backend, database, Supabase, service, repository, auth, or ownership logic.
 - Step 5.5 adds UI-only local poll results shown after local vote submission on Episode detail. It does not add persistent votes/results, real user identity, Create Episode poll-state coupling, backend, database, Supabase, service, repository, auth, or ownership logic.
+- Step 6.1 adds backend-agnostic watched Episode types and local model helpers only. It does not add Continue Watching UI, real playback tracking, persistence, backend, database, Supabase, service, repository, auth, user identity, or mock watched records.
+- Step 6.2 adds backend-agnostic watched/episode ordering helpers and next-unwatched selection logic only. It does not add Continue Watching UI, real playback timing, persistence, backend, database, Supabase, service, repository, auth, user identity, or mock watched records.
+- Step 6.3 adds a UI-only Home Continue Watching section using local temporary data and watched helpers. It does not add deduplication-by-Show, persistence, real video progress tracking, backend, database, Supabase, service, repository, auth, user identity, or global state.
+- Step 6.4 deduplicates Home Continue Watching to one next-up item per Show using local temporary data and watched helpers. It does not add persistence, real video progress tracking, backend, database, Supabase, service, repository, auth, user identity, or global state.
+- Step 6.5 verifies/refines Home Continue Watching Episode-detail routing so deduplicated items open the correct next unwatched Episode with consistent temporary params. It does not add persistence, real video progress tracking, backend, database, Supabase, service, repository, auth, user identity, or global state.
 
 ## 9. Out of Scope Until Later
 
@@ -2635,4 +2775,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 5.5 — Show Poll Results is Ready for Review. After product owner approval, Step 5.5 can be marked Complete and Phase 5 can be reviewed for completion.
+Step 6.5 — Route to Correct Episode is Ready for Review. After product owner approval, Step 6.5 can be marked Complete and Phase 6 can be reviewed for completion.
