@@ -20,8 +20,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 ## 3. Current Status
 
 Current Phase: Phase 9 — Monetization  
-Current Step: Step 9.1 — Define Monetization Strategy  
-Status: Not Started
+Current Step: None (Phase 9 Complete)  
+Status: Complete
 
 ## 4. Phase Roadmap
 
@@ -80,6 +80,8 @@ Status: Complete
 Goal: Add a Writers Room for co-creators and collaborative show planning.
 
 ### Phase 9 — Monetization
+
+Status: Complete
 
 Goal: Add support for tipping, premium episodes, or season passes later.
 
@@ -2985,7 +2987,7 @@ Findings:
 
 ### Step 9.1 — Define Monetization Strategy
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Choose and document the first monetization path before implementation.
@@ -3009,9 +3011,25 @@ Verification:
 - Review decision entry.
 - Update next implementation steps only after a decision is made.
 
+Findings:
+- Monetization principles for Episodic were defined as show-first, audience-trust-first, and optionality-first: monetization should reinforce serialized Show relationships and should not disrupt core viewing flow.
+- MVP monetization stance is `free-to-watch core experience` to prioritize product validation of Show following, episode return behavior, and engagement loops before introducing monetization friction.
+- Show-level creator support was selected as the first likely future monetization direction: optional tipping/support aligned to a Show and its ongoing story, rather than isolated post-level transactions.
+- Premium access options were documented as future, optional extensions after core validation:
+  - optional Show-level season pass
+  - optional premium episodes for eligible Shows
+  - optional ad-supported free tier
+  - optional ad-free viewer tier
+- Creator monetization eligibility is explicitly deferred for future policy definition (minimum audience/engagement/safety criteria), not introduced in this step.
+- Viewer monetization guidance is to keep free access as default while offering optional paid support/value layers later, preserving accessibility and growth.
+- Current out-of-scope monetization items were documented for this step: payment providers, IAP/subscription implementation, ad network integration, payout logic, tax/compliance flows, backend schemas/services, and authentication-dependent entitlements.
+- Future technical considerations were documented as planning inputs only: entitlement model by Show/Episode, purchase/receipt verification strategy, creator payout ledger design, and analytics needed to evaluate conversion without degrading retention.
+- Key risks/decisions to revisit later were documented: paywall timing risk, ad load risk, creator fairness, platform fee impact, and sequencing of tipping vs premium access.
+- No app code, UI, payment/subscription/ad/payout logic, backend, database, Supabase, service, repository, auth, persistence, or global state logic was added.
+
 ### Step 9.2 — Add Monetization Types
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Define minimal types for the selected monetization path.
@@ -3022,8 +3040,7 @@ Acceptance Criteria:
 - Access states are represented clearly.
 
 Files Allowed:
-- `src/types/monetization.ts`
-- `src/features/monetization/`
+- `types/monetization.ts`
 - `plan.md`
 
 Out of Scope:
@@ -3037,9 +3054,20 @@ Verification:
 - Confirm exports resolve.
 - Update `plan.md`.
 
+Findings:
+- Added shared app-facing monetization types in `types/monetization.ts` aligned to the Step 9.1 strategy and kept backend-agnostic.
+- Reused existing shared aliases where appropriate: `ShowId`, `EpisodeId`, `UserId`, and `ISODateString`.
+- Added Show-first monetization typing through `ShowMonetizationSettings` and `enabledFeatures` to represent optional monetization rollout per Show.
+- Added creator support/tip concepts via `CreatorSupportOption` and `CreatorSupportTier` with `amountCents` and currency string code.
+- Added premium access concepts via `PremiumAccessType` and `ShowPremiumAccess`, including optional episode-level association through nullable `episodeId`.
+- Added optional viewer subscription/ad-free concepts via `ViewerSubscriptionTier` and `ViewerSubscriptionStatus`.
+- Added creator eligibility typing via `CreatorMonetizationEligibility` and `CreatorMonetizationEligibilityStatus`.
+- Added create/update input types for Show monetization settings: `CreateShowMonetizationSettingsInput` and `UpdateShowMonetizationSettingsInput`.
+- No UI, payment/subscription/ad/payout logic, payment provider-specific typing, backend, database, Supabase, service, repository, auth, persistence, or global state logic was added.
+
 ### Step 9.3 — Add Monetization Placeholder UI
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Represent monetized Episode or Show states without real payments.
@@ -3050,9 +3078,8 @@ Acceptance Criteria:
 - No real payment flow is introduced.
 
 Files Allowed:
-- `src/features/monetization/`
-- `src/features/episodes/`
-- `src/features/shows/`
+- `app/shows/[showId].tsx`
+- `app/episodes/[episodeId].tsx`
 - `plan.md`
 
 Out of Scope:
@@ -3065,6 +3092,15 @@ Verification:
 - Run available checks.
 - Inspect monetization placeholder states.
 - Update `plan.md`.
+
+Findings:
+- Added UI-only monetization placeholder sections to Show detail and Episode detail using existing themed components and theme tokens.
+- Reused shared monetization types from `types/monetization.ts` for local placeholder state and display modeling.
+- Show detail now includes a local monetization card that represents show-level support and premium-access placeholders, with explicit copy that no payment is collected yet.
+- Episode detail now includes local monetization state display for unlocked preview, locked premium placeholder, and optional ad-free tier concept with clear "connect later" messaging.
+- Temporary monetization display data remains local to each edited screen file; no shared mock monetization data layer was added.
+- Existing video placeholder behavior remains available; no playback or entitlement enforcement was added.
+- No payment/subscription/ad/payout/tax logic, provider integrations, backend, database, Supabase, services, repositories, auth, persistence, or global state logic was added.
 
 ## 6. Progress Log
 
@@ -3209,6 +3245,15 @@ Verification:
 | 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.8 — Add UI-only Create Scene Support | In Progress | Started adding a local-only Create Scene form section to the Writers Room screen using existing scene helper options and ordering helpers. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Confirmed Step 8.8 scope remains UI-only with no persistence, scene-list mutation, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or global state logic. |
 | 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.8 — Add UI-only Create Scene Support | Ready for Review | Added local scene form state, parent draft selection, title validation, scene type selection, order input/defaults, and a UI-only save action/message while preserving existing draft/scene display without updating it. | `plan.md`, `app/shows/[showId]/writers-room.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 | 2026-05-27 | Phase 8 — Creator Collaboration | Step 8.8 — Add UI-only Create Scene Support | Complete | Product owner reviewed and passed UI-only Create Scene support on the Writers Room screen. Phase 8 was marked complete and Phase 9 was identified as the next planned phase. | `plan.md` | Confirmed Step 8.8 findings were recorded and no persistence, scene-list mutation, backend, database, Supabase, service, repository, auth, permission enforcement, invitation behavior, or global state logic was added. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.1 — Define Monetization Strategy | In Progress | Started monetization strategy documentation focused on a Show-first model, MVP free-to-watch stance, and deferred implementation details. | `plan.md` | Confirmed Step 9.1 scope is documentation-only with no app code, UI, payment/subscription/ad/payout logic, backend, database, Supabase, service, repository, auth, persistence, or global state changes. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.1 — Define Monetization Strategy | Ready for Review | Documented MVP monetization strategy: free-to-watch core, Show-level creator support direction, optional premium/ad models later, out-of-scope boundaries, and future technical/decision risks to revisit. | `plan.md` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.1 — Define Monetization Strategy | Complete | Product owner reviewed and passed the monetization strategy documentation. Step 9.2 was identified as the next planned Phase 9 step and remains not started. | `plan.md` | Confirmed Step 9.1 was marked Complete in the plan and no app code, monetization implementation, backend, database, Supabase, service, repository, auth, persistence, or global state changes were made. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.2 — Add Monetization Types | In Progress | Started Step 9.2 by planning shared app-facing monetization types aligned to the approved show-first strategy and existing shared ID/date aliases. | `plan.md` | Confirmed scope remains type-definition-only with no UI, payment/subscription/ad/payout logic, backend, database, Supabase, service, repository, auth, persistence, or global state changes. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.2 — Add Monetization Types | Ready for Review | Added backend-agnostic shared monetization types for Show settings, creator support tiers, premium access concepts, viewer subscription/ad-free concepts, creator eligibility, and create/update settings inputs. | `plan.md`, `types/monetization.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.2 — Add Monetization Types | Complete | Product owner reviewed and passed shared monetization type definitions. Step 9.3 was identified as the next planned Phase 9 step and remains not started. | `plan.md` | Confirmed Step 9.2 was marked Complete in the plan and no app code, monetization implementation, backend, database, Supabase, service, repository, auth, persistence, or global state changes were made in this transition update. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.3 — Add Monetization Placeholder UI | In Progress | Started Step 9.3 by planning UI-only Show/Episode monetization placeholders with local screen data and no real payment flow. | `plan.md` | Confirmed Step 9.3 scope remains placeholder UI only with no payment/subscription/ad/payout/tax logic, provider integration, backend, database, Supabase, service, repository, auth, persistence, or global state changes. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.3 — Add Monetization Placeholder UI | Ready for Review | Added placeholder monetization UI states on Show and Episode detail surfaces, including unlocked/free, locked/premium, and support-this-show messaging with explicit "connect later" copy and no entitlement enforcement. | `plan.md`, `app/shows/[showId].tsx`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 9 — Monetization | Step 9.3 — Add Monetization Placeholder UI | Complete | Product owner reviewed and passed monetization placeholder UI. All currently defined Phase 9 steps (9.1–9.3) are now complete, so Phase 9 was marked complete. | `plan.md` | Confirmed Step 9.3 was marked Complete in the plan and no additional implementation, backend, database, Supabase, service, repository, auth, persistence, or global state changes were made in this transition update. |
 
 ## 7. Decisions Log
 
@@ -3271,6 +3316,9 @@ Verification:
 - Step 8.6 extends the UI-only Writers Room screen with local temporary draft/scene planning display sections. It does not add create/edit/delete behavior, drag/drop ordering, real collaboration behavior, permission enforcement, invitation behavior, backend, database, Supabase, services, repositories, auth, user identity, persistence, or global state.
 - Step 8.7 adds a UI-only local Create Draft form on the Writers Room screen. It does not persist drafts, update the displayed draft list, add scene CRUD, add drag/drop ordering, or add backend, database, Supabase, services, repositories, auth, user identity, permission enforcement, invitation behavior, or global state.
 - Step 8.8 adds a UI-only local Create Scene form on the Writers Room screen. It does not persist scenes, update the displayed scene list, add scene edit/delete behavior, add draft edit/delete behavior, add drag/drop ordering, or add backend, database, Supabase, services, repositories, auth, user identity, permission enforcement, invitation behavior, or global state.
+- Step 9.1 defines monetization strategy documentation only. It does not add monetization UI, payment/subscription/ad/payout logic, backend, database, Supabase, services, repositories, auth, user identity, persistence, or global state.
+- Step 9.2 adds shared monetization types only. It does not add monetization UI, payment/subscription/ad/payout logic, backend, database, Supabase, services, repositories, auth, entitlement enforcement, user identity, persistence, or global state.
+- Step 9.3 adds UI-only monetization placeholders on Show and Episode detail screens. It does not add real payment/subscription/ad/payout/tax flows, provider integrations, backend, database, Supabase, services, repositories, auth, entitlement enforcement, user identity, persistence, or global state.
 
 ## 9. Out of Scope Until Later
 
@@ -3287,4 +3335,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 9.1 — Define Monetization Strategy is the next planned step and is currently Not Started.
+No next phase or step is currently defined in `plan.md` after Phase 9. Product-owner direction is required to define the next planned phase and step before implementation continues.

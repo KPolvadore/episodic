@@ -15,6 +15,12 @@ import {
 } from "@/models/episode";
 import type { Episode, EpisodeHookType } from "@/types/episode";
 import type { EpisodePoll, EpisodePollOption } from "@/types/episodePoll";
+import type {
+  PremiumAccessType,
+  ShowPremiumAccess,
+  ViewerSubscriptionStatus,
+  ViewerSubscriptionTier,
+} from "@/types/monetization";
 
 type EpisodeDetailParams = {
   description?: string;
@@ -133,6 +139,30 @@ export default function EpisodeDetailScreen() {
     (totalVotes, voteCount) => totalVotes + voteCount,
     0,
   );
+  const premiumAccessType: PremiumAccessType = "premium_episode";
+  const viewerSubscriptionStatus: ViewerSubscriptionStatus = "not_subscribed";
+  const localAdFreeTier: ViewerSubscriptionTier = {
+    id: "viewer-ad-free-tier",
+    title: "Ad-free Viewer Tier (Placeholder)",
+    description: "Subscription checkout will be connected later.",
+    amountCents: 799,
+    currency: "USD",
+    benefits: ["Ad-free viewing (future)", "Support show creators (future)"],
+    includesAdFree: true,
+    isActive: false,
+  };
+  const localEpisodePremiumAccess: ShowPremiumAccess = {
+    id: `${showId}-${params.episodeId ?? "episode"}-premium`,
+    showId,
+    episodeId: params.episodeId ?? "episode-detail-local",
+    accessType: premiumAccessType,
+    title: "Premium episode placeholder",
+    description:
+      "This episode can be marked premium later. Payment flow will connect later.",
+    amountCents: 299,
+    currency: "USD",
+    isActive: false,
+  };
 
   return (
     <ThemedView variant="screen" style={styles.screen}>
@@ -317,6 +347,38 @@ export default function EpisodeDetailScreen() {
           </ThemedText>
         </ThemedView>
 
+        <ThemedView variant="card" style={styles.monetizationCard}>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Episode Monetization Placeholder
+          </ThemedText>
+          <View style={styles.monetizationStateRow}>
+            <ThemedText variant="body">Unlocked preview</ThemedText>
+            <ThemedText variant="caption" style={styles.stateBadge}>
+              FREE
+            </ThemedText>
+          </View>
+          <View style={styles.monetizationStateRow}>
+            <ThemedText variant="body">{localEpisodePremiumAccess.title}</ThemedText>
+            <ThemedText variant="caption" style={styles.lockedBadge}>
+              LOCKED
+            </ThemedText>
+          </View>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            {localEpisodePremiumAccess.description}
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Viewer subscription status: {viewerSubscriptionStatus}
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            Optional tier: {localAdFreeTier.title} ({localAdFreeTier.currency}{" "}
+            {(localAdFreeTier.amountCents / 100).toFixed(2)})
+          </ThemedText>
+          <ThemedText variant="caption" style={styles.mutedText}>
+            No payment, subscription, entitlement, or ad integration is active
+            in this screen.
+          </ThemedText>
+        </ThemedView>
+
         <ThemedView variant="card" style={styles.showCard}>
           <ThemedText variant="caption" style={styles.mutedText}>
             Parent Show
@@ -390,6 +452,14 @@ const styles = StyleSheet.create({
   },
   mutedText: {
     color: theme.colors.text.muted,
+  },
+  monetizationCard: {
+    gap: theme.spacing.sm,
+  },
+  monetizationStateRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   pollCard: {
     gap: theme.spacing.md,
@@ -484,6 +554,24 @@ const styles = StyleSheet.create({
   },
   showCard: {
     gap: theme.spacing.md,
+  },
+  stateBadge: {
+    backgroundColor: theme.colors.background.elevated,
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    color: theme.colors.text.secondary,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+  },
+  lockedBadge: {
+    backgroundColor: theme.colors.background.elevated,
+    borderColor: theme.colors.brand.secondary,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    color: theme.colors.brand.secondary,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
   },
   voteButton: {
     alignItems: "center",
