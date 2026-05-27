@@ -17,6 +17,7 @@ export type Episode = {
   episodeNumber: number;
   title: string;
   description: string;
+  recapText?: string | null;
   videoUrl: string | null;
   thumbnailUrl: string | null;
   hookType: EpisodeHookType;
@@ -30,6 +31,7 @@ export type CreateEpisodeInput = {
   episodeNumber: number;
   title: string;
   description?: string;
+  recapText?: string | null;
   videoUrl?: string | null;
   thumbnailUrl?: string | null;
   hookType?: EpisodeHookType;
@@ -42,6 +44,7 @@ export type UpdateEpisodeInput = Partial<
     | "episodeNumber"
     | "title"
     | "description"
+    | "recapText"
     | "videoUrl"
     | "thumbnailUrl"
     | "hookType"

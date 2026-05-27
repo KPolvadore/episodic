@@ -51,6 +51,35 @@ export function normalizeEpisodeTitle(title: string) {
   return title.trim().replace(/\s+/g, " ");
 }
 
+export function normalizeEpisodeRecap(recapText: string | null | undefined) {
+  if (recapText == null) {
+    return null;
+  }
+
+  const normalizedRecap = recapText.trim().replace(/\s+/g, " ");
+  return normalizedRecap.length > 0 ? normalizedRecap : null;
+}
+
+export function hasEpisodeRecap(recapText: string | null | undefined) {
+  return normalizeEpisodeRecap(recapText) !== null;
+}
+
+export function getEpisodeRecapPreview(
+  recapText: string | null | undefined,
+  maxLength = 120,
+) {
+  const normalizedRecap = normalizeEpisodeRecap(recapText);
+  if (normalizedRecap === null) {
+    return null;
+  }
+
+  if (normalizedRecap.length <= maxLength) {
+    return normalizedRecap;
+  }
+
+  return `${normalizedRecap.slice(0, maxLength).trimEnd()}…`;
+}
+
 export function isValidEpisodeTitle(title: string) {
   return normalizeEpisodeTitle(title).length > 0;
 }
@@ -72,6 +101,7 @@ export function getDefaultCreateEpisodeInput(
     description: "",
     episodeNumber: defaultEpisodeNumber,
     hookType: defaultEpisodeHookType,
+    recapText: null,
     seasonNumber: defaultSeasonNumber,
     showId,
     thumbnailUrl: null,

@@ -35,6 +35,7 @@ type EpisodeDisplayItem = Pick<
   | "episodeNumber"
   | "title"
   | "description"
+  | "recapText"
   | "hookType"
   | "videoUrl"
 >;
@@ -46,6 +47,8 @@ const getTemporaryEpisodes = (showId: string): EpisodeDisplayItem[] => [
     episodeNumber: 1,
     hookType: "cliffhanger",
     id: `${showId}-episode-1`,
+    recapText:
+      "Previously, the host found a lost recording that hinted the first guest has been here before.",
     seasonNumber: 1,
     showId,
     title: "Pilot",
@@ -57,6 +60,7 @@ const getTemporaryEpisodes = (showId: string): EpisodeDisplayItem[] => [
     episodeNumber: 2,
     hookType: "question",
     id: `${showId}-episode-2`,
+    recapText: null,
     seasonNumber: 1,
     showId,
     title: "What Happens Next",
@@ -225,6 +229,7 @@ export default function ShowDetailScreen() {
                       episodeId: episode.id,
                       episodeNumber: String(episode.episodeNumber),
                       hookType: episode.hookType,
+                      recapText: episode.recapText ?? undefined,
                       seasonNumber: String(episode.seasonNumber),
                       showCategory: category,
                       showDescription: description,
