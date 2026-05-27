@@ -19,8 +19,8 @@ Episodic is a series-first social video app centered around Shows. Users create 
 
 ## 3. Current Status
 
-Current Phase: Phase 6 — Continue Watching  
-Current Step: Step 6.5 — Route to Correct Episode  
+Current Phase: Phase 7 — Previously On  
+Current Step: Step 7.4 — Show Recap Before Episode Playback  
 Status: Ready for Review
 
 ## 4. Phase Roadmap
@@ -63,11 +63,13 @@ Goal: Let viewers influence what happens next through polls and choices.
 
 ### Phase 6 — Continue Watching
 
-Status: In Progress
+Status: Complete
 
 Goal: Help viewers resume serialized content.
 
 ### Phase 7 — Previously On
+
+Status: In Progress
 
 Goal: Help viewers understand ongoing Shows with recap support.
 
@@ -2266,7 +2268,7 @@ Findings:
 
 ### Step 6.5 — Route to Correct Episode
 
-Status: Ready for Review
+Status: Complete
 
 Goal:
 Verify and refine Continue Watching navigation so each deduplicated item routes to the correct next unwatched Episode.
@@ -2324,35 +2326,47 @@ Findings:
 
 ### Step 7.1 — Add Recap Field to Episode
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Add Episode recap support for serialized viewing.
 
 Acceptance Criteria:
 - Episode type supports an optional recap field.
-- Create or edit Episode flow can capture recap text if those flows exist.
-- Existing Episodes without recaps render safely.
+- CreateEpisodeInput and UpdateEpisodeInput support optional/nullable recap text.
+- Existing Episodes without recaps remain valid.
+- Any recap helpers remain app-facing and backend-agnostic.
 
 Files Allowed:
-- `src/types/episode.ts`
-- `src/features/episodes/`
+- `types/episode.ts`
+- `models/episode.ts`
 - `plan.md`
 
 Out of Scope:
 - AI-generated recaps
-- Video recap clips
-- Recap analytics
-- Notifications
+- Transcript or caption logic
+- Backend/database/service/repository/auth logic
+- UI display of Previously On
 
 Verification:
-- Run available checks.
-- Confirm Episode detail handles recap and no-recap states.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect `plan.md`, `types/episode.ts`, and `models/episode.ts`.
 - Update `plan.md`.
+
+Findings:
+- Added optional/nullable `recapText` support to the shared app-facing `Episode` type.
+- Added `recapText` support to `CreateEpisodeInput` and `UpdateEpisodeInput`.
+- Added small backend-agnostic recap helpers in `models/episode.ts`: `normalizeEpisodeRecap`, `hasEpisodeRecap`, and `getEpisodeRecapPreview`.
+- Updated default create input helper to include `recapText: null` for consistency with optional recap support.
+- No UI was added and no Previously On section was displayed.
+- No backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic was added.
+- No packages were installed.
 
 ### Step 7.2 — Display Previously On Section
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Show recap context before or near an Episode.
@@ -2363,24 +2377,39 @@ Acceptance Criteria:
 - Display supports serialized Show context.
 
 Files Allowed:
-- `src/features/episodes/`
 - `app/episodes/[episodeId].tsx`
+- `app/(tabs)/home.tsx` only if needed for temporary recap route params
+- `app/shows/[showId].tsx` only if needed for temporary recap route params
 - `plan.md`
 
 Out of Scope:
 - AI recap generation
 - Collapsible behavior
 - Playback gating
-- Analytics
+- Persistence
+- Backend/database/service/repository/auth logic
 
 Verification:
-- Run available checks.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
 - Inspect Episode detail with and without recap.
 - Update `plan.md`.
 
+Findings:
+- Added a UI-only `Previously On` section in `app/episodes/[episodeId].tsx`.
+- The section renders only when recap text exists and is hidden when recap text is missing.
+- Episode detail recap handling uses existing episode recap helpers from `models/episode.ts` (`normalizeEpisodeRecap` and `hasEpisodeRecap`).
+- Added temporary recap route params from Home and Show detail Episode navigation for local UI demonstration.
+- Added local temporary episodes with and without recap text so both display states can be verified.
+- No collapse/skip behavior was added.
+- No pre-playback recap gating was added.
+- No persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added.
+- No packages were installed.
+
 ### Step 7.3 — Allow Recap Collapse/Skip
 
-Status: Not Started
+Status: Complete
 
 Goal:
 Let viewers collapse or skip recap content.
@@ -2391,7 +2420,6 @@ Acceptance Criteria:
 - Interaction does not affect Episode watch state.
 
 Files Allowed:
-- `src/features/episodes/`
 - `app/episodes/[episodeId].tsx`
 - `plan.md`
 
@@ -2399,16 +2427,31 @@ Out of Scope:
 - Persistent user preference
 - AI summaries
 - Video recap clips
-- Analytics
+- Playback gating
+- Persistence
+- Backend/database/service/repository/auth logic
 
 Verification:
-- Run available checks.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
 - Toggle recap visibility.
+- Confirm poll and video placeholder behavior remain intact.
 - Update `plan.md`.
+
+Findings:
+- Added UI-only local recap collapse/expand behavior to Episode detail using `isRecapCollapsed` component state.
+- When recap text exists, Previously On still renders and now includes a local action to toggle between `Hide recap` and `Show recap`.
+- Recap text is hidden when collapsed and can be revealed again without leaving the screen.
+- Collapse state is local and non-persistent; no storage or backend logic was added.
+- No pre-playback recap gating or forced recap-before-playback behavior was added.
+- Existing poll display, voting, local results behavior, and video placeholder behavior were preserved.
+- No backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic was added.
+- No packages were installed.
 
 ### Step 7.4 — Show Recap Before Episode Playback
 
-Status: Not Started
+Status: Ready for Review
 
 Goal:
 Place recap context before Episode playback or placeholder playback.
@@ -2419,20 +2462,34 @@ Acceptance Criteria:
 - Missing recap state does not leave blank UI.
 
 Files Allowed:
-- `src/features/episodes/`
 - `app/episodes/[episodeId].tsx`
 - `plan.md`
 
 Out of Scope:
 - Full video player
 - AI-generated recaps
-- Playback analytics
-- Recommendations
+- Playback gating
+- Persistence
+- Backend/database/service/repository/auth logic
 
 Verification:
-- Run available checks.
-- Inspect Episode detail layout.
+- Run `npm run lint`.
+- Run `npx tsc --noEmit`.
+- Inspect `git status --short`.
+- Inspect Episode detail recap-before-video layout.
+- Confirm poll and video placeholder behavior remain intact.
 - Update `plan.md`.
+
+Findings:
+- Reordered Episode detail so the Previously On recap section renders before the video placeholder when recap text exists.
+- Preserved recap conditional rendering: no recap text still means no Previously On section.
+- Preserved local recap collapse/expand behavior (`Hide recap` / `Show recap`).
+- Added simple UI-only flow messaging and a local `Continue to episode` action to communicate the future pre-playback recap flow.
+- Video placeholder remains visible and unchanged as a placeholder surface.
+- No real playback gating or blocking behavior was added.
+- Existing poll display, voting, and local results behavior remains intact.
+- No persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added.
+- No packages were installed.
 
 ## Phase 8 — Creator Collaboration
 
@@ -2709,6 +2766,18 @@ Verification:
 | 2026-05-27 | Phase 6 — Continue Watching | Step 6.4 — Deduplicate Continue Watching by Show | Complete | Product owner reviewed and passed show-based Continue Watching deduplication. Step 6.5 was started to verify/refine routing to the correct next unwatched Episode. | `plan.md` | Confirmed Step 6.4 findings were recorded and no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking was added. |
 | 2026-05-27 | Phase 6 — Continue Watching | Step 6.5 — Route to Correct Episode | In Progress | Started verifying and refining Continue Watching route params so each deduplicated Show item opens the correct next unwatched Episode detail state. | `plan.md`, `app/(tabs)/home.tsx` | Confirmed Step 6.5 scope remains local UI-only with no persistence, backend, database, Supabase, service, repository, auth, user identity, global state, or real video progress tracking. |
 | 2026-05-27 | Phase 6 — Continue Watching | Step 6.5 — Route to Correct Episode | Ready for Review | Added a shared local route-param builder for Home Episode navigation and confirmed Continue Watching opens the selected next unwatched Episode with complete temporary Episode/Show params. | `plan.md`, `app/(tabs)/home.tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 6 — Continue Watching | Step 6.5 — Route to Correct Episode | Complete | Product owner reviewed and passed Continue Watching routing to the correct next unwatched Episode. Phase 6 was marked complete and Phase 7 was started. | `plan.md` | Confirmed Step 6.5 findings were recorded and no persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.1 — Add Recap Field to Episode | In Progress | Started adding app-facing optional recap support to Episode types and helpers for future Previously On UI. | `plan.md`, `types/episode.ts`, `models/episode.ts` | Confirmed Step 7.1 scope remains type/model-only with no UI, Previously On rendering, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.1 — Add Recap Field to Episode | Ready for Review | Added optional/nullable `recapText` to Episode and create/update inputs, plus backend-agnostic recap normalization/presence/preview helpers. | `plan.md`, `types/episode.ts`, `models/episode.ts` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.1 — Add Recap Field to Episode | Complete | Product owner reviewed and passed app-facing Episode recap type/input/helper support. Step 7.2 was started to display Previously On on Episode detail. | `plan.md` | Confirmed Step 7.1 findings were recorded and no UI, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic was added. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.2 — Display Previously On Section | In Progress | Started adding a UI-only Episode detail Previously On section with temporary recap route params. | `plan.md`, `app/episodes/[episodeId].tsx`, `app/(tabs)/home.tsx`, `app/shows/[showId].tsx` | Confirmed Step 7.2 scope remains UI-only with no collapse/skip behavior, playback gating, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.2 — Display Previously On Section | Ready for Review | Added conditional Episode detail Previously On rendering driven by temporary recap text and existing recap helpers, with local route-param recap support from Home and Show detail Episode navigation. | `plan.md`, `app/episodes/[episodeId].tsx`, `app/(tabs)/home.tsx`, `app/shows/[showId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.2 — Display Previously On Section | Complete | Product owner reviewed and passed UI-only Previously On display behavior on Episode detail. Step 7.3 was started to add local recap collapse/skip controls. | `plan.md` | Confirmed Step 7.2 findings were recorded and no backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic was added. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.3 — Allow Recap Collapse/Skip | In Progress | Started adding UI-only local collapse/expand controls for Previously On on Episode detail. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 7.3 scope remains local UI-only with no gating, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.3 — Allow Recap Collapse/Skip | Ready for Review | Added local recap toggle controls on Episode detail so recap can be hidden and shown again when recap text exists, while preserving existing poll and video placeholder behavior. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.3 — Allow Recap Collapse/Skip | Complete | Product owner reviewed and passed local recap collapse/expand behavior on Episode detail. Step 7.4 was started to place recap before playback placeholder content. | `plan.md` | Confirmed Step 7.3 findings were recorded and no backend, database, Supabase, service, repository, auth, user identity, persistence, or global state logic was added. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.4 — Show Recap Before Episode Playback | In Progress | Started reordering Episode detail so Previously On appears before the video placeholder while preserving local recap toggle behavior. | `plan.md`, `app/episodes/[episodeId].tsx` | Confirmed Step 7.4 scope remains UI-only with no real playback, gating, persistence, backend, database, Supabase, service, repository, auth, user identity, or global state logic. |
+| 2026-05-27 | Phase 7 — Previously On | Step 7.4 — Show Recap Before Episode Playback | Ready for Review | Moved Previously On ahead of video placeholder and added local placeholder flow copy/action while preserving recap conditional rendering, local collapse/expand, and existing poll/video behavior. | `plan.md`, `app/episodes/[episodeId].tsx` | Ran `npm run lint` and `npx tsc --noEmit`; both passed. |
 
 ## 7. Decisions Log
 
@@ -2759,6 +2828,10 @@ Verification:
 - Step 6.3 adds a UI-only Home Continue Watching section using local temporary data and watched helpers. It does not add deduplication-by-Show, persistence, real video progress tracking, backend, database, Supabase, service, repository, auth, user identity, or global state.
 - Step 6.4 deduplicates Home Continue Watching to one next-up item per Show using local temporary data and watched helpers. It does not add persistence, real video progress tracking, backend, database, Supabase, service, repository, auth, user identity, or global state.
 - Step 6.5 verifies/refines Home Continue Watching Episode-detail routing so deduplicated items open the correct next unwatched Episode with consistent temporary params. It does not add persistence, real video progress tracking, backend, database, Supabase, service, repository, auth, user identity, or global state.
+- Step 7.1 adds optional app-facing Episode recap typing and tiny recap helpers only. It does not add recap UI, Previously On rendering, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
+- Step 7.2 adds a UI-only Episode detail Previously On section that displays when temporary recap text exists and hides when missing. It does not add collapse/skip behavior, playback gating, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
+- Step 7.3 adds UI-only local recap collapse/expand controls on Episode detail. It does not add playback gating, forced recap-before-playback behavior, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
+- Step 7.4 reorders Episode detail to present recap before the video placeholder when recap exists, with UI-only placeholder flow copy. It does not add real playback, gating, persistence, backend, database, Supabase, services, repositories, auth, user identity, or global state.
 
 ## 9. Out of Scope Until Later
 
@@ -2775,4 +2848,4 @@ Verification:
 ## 10. Next Step
 
 Next Step:  
-Step 6.5 — Route to Correct Episode is Ready for Review. After product owner approval, Step 6.5 can be marked Complete and Phase 6 can be reviewed for completion.
+Step 7.4 — Show Recap Before Episode Playback is Ready for Review. After product owner approval, Step 7.4 can be marked Complete and Phase 7 can be reviewed for completion.

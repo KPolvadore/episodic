@@ -32,6 +32,7 @@ type PlaceholderFeedEpisode = {
   episodeNumber: number;
   episodeTitle: string;
   episodeDescription: string;
+  recapText?: string | null;
   hookType: "none" | "question" | "poll" | "cliffhanger" | "challenge" | "reveal";
   videoUrl: string | null;
   publishedAt: string;
@@ -52,6 +53,7 @@ type EpisodeDetailRouteParamsInput = {
   episodeId: string;
   episodeNumber: number;
   hookType: PlaceholderFeedEpisode["hookType"];
+  recapText?: string | null;
   seasonNumber: number;
   showCategory: ShowCategory;
   showDescription: string;
@@ -68,6 +70,7 @@ function buildEpisodeDetailRouteParams(input: EpisodeDetailRouteParamsInput) {
     episodeId: input.episodeId,
     episodeNumber: String(input.episodeNumber),
     hookType: input.hookType,
+    recapText: input.recapText ?? undefined,
     seasonNumber: String(input.seasonNumber),
     showCategory: input.showCategory,
     showDescription: input.showDescription,
@@ -108,6 +111,8 @@ const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
   {
     episodeDescription: "The crew tests tonight's menu in one borrowed kitchen before opening weekend.",
     episodeNumber: 1,
+    recapText:
+      "Last time, the crew secured a temporary kitchen permit but ran out of prep time before service.",
     episodeTitle: "Pilot Service",
     hookType: "question",
     id: "local-episode-1",
@@ -124,6 +129,7 @@ const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
   {
     episodeDescription: "A new bassline changes the whole song minutes before their first live rehearsal.",
     episodeNumber: 2,
+    recapText: null,
     episodeTitle: "Rewrite at Midnight",
     hookType: "cliffhanger",
     id: "local-episode-2",
@@ -140,6 +146,8 @@ const placeholderFeedEpisodes: PlaceholderFeedEpisode[] = [
   {
     episodeDescription: "A witness finally speaks, but the recording ends before the final name is said.",
     episodeNumber: 3,
+    recapText:
+      "Previously, every clue pointed to one suspect until a hidden tape suggested an inside connection.",
     episodeTitle: "The Missing Name",
     hookType: "reveal",
     id: "local-episode-3",
@@ -168,6 +176,7 @@ const continueWatchingEpisodes: Episode[] = placeholderFeedEpisodes.map((item) =
   episodeNumber: item.episodeNumber,
   hookType: item.hookType,
   id: item.id,
+  recapText: item.recapText ?? null,
   seasonNumber: item.seasonNumber,
   showId: item.showId,
   thumbnailUrl: null,
@@ -356,6 +365,7 @@ export default function HomeScreen() {
                         episodeId: item.nextEpisode.id,
                         episodeNumber: item.nextEpisode.episodeNumber,
                         hookType: item.nextEpisode.hookType,
+                        recapText: item.nextEpisode.recapText,
                         seasonNumber: item.nextEpisode.seasonNumber,
                         showCategory: item.details.showCategory,
                         showDescription: item.details.showDescription,
@@ -406,6 +416,7 @@ export default function HomeScreen() {
                         episodeId: item.id,
                         episodeNumber: item.episodeNumber,
                         hookType: item.hookType,
+                        recapText: item.recapText,
                         seasonNumber: item.seasonNumber,
                         showCategory: item.showCategory,
                         showDescription: item.showDescription,

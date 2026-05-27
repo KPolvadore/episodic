@@ -8,6 +8,8 @@ import { theme } from "@/constants/theme";
 import {
   getEpisodeDisplayNumber,
   getEpisodeHookLabel,
+  hasEpisodeRecap,
+  normalizeEpisodeRecap,
   getEpisodeVideoStatusLabel,
   isValidEpisodeNumber,
 } from "@/models/episode";
@@ -19,6 +21,7 @@ type EpisodeDetailParams = {
   episodeId?: string;
   episodeNumber?: string;
   hookType?: EpisodeHookType;
+  recapText?: string;
   seasonNumber?: string;
   showCategory?: string;
   showDescription?: string;
@@ -65,6 +68,7 @@ function getHookTypeParam(value: string | string[] | undefined) {
 
 export default function EpisodeDetailScreen() {
   const params = useLocalSearchParams<EpisodeDetailParams>();
+  const [isRecapCollapsed, setIsRecapCollapsed] = useState(false);
   const [selectedPollOptionId, setSelectedPollOptionId] = useState<
     EpisodePollOption["id"] | null
   >(null);
@@ -88,6 +92,8 @@ export default function EpisodeDetailScreen() {
     fallbackEpisode.seasonNumber,
   );
   const hookType = getHookTypeParam(params.hookType);
+  const recapText = normalizeEpisodeRecap(getParamValue(params.recapText));
+  const shouldShowPreviouslyOn = hasEpisodeRecap(recapText);
   const videoStatusLabel = getEpisodeVideoStatusLabel(videoUrl);
   const localPollOptions: EpisodePollOption[] = [
     {
@@ -131,6 +137,41 @@ export default function EpisodeDetailScreen() {
   return (
     <ThemedView variant="screen" style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
+        {shouldShowPreviouslyOn ? (
+          <ThemedView variant="card" style={styles.previouslyOnCard}>
+            <View style={styles.previouslyOnHeader}>
+              <ThemedText variant="caption" style={styles.mutedText}>
+                Previously On
+              </ThemedText>
+              <Pressable
+                onPress={() => {
+                  setIsRecapCollapsed((currentValue) => !currentValue);
+                }}
+                style={styles.recapToggleButton}
+              >
+                <ThemedText variant="caption" style={styles.recapToggleText}>
+                  {isRecapCollapsed ? "Show recap" : "Hide recap"}
+                </ThemedText>
+              </Pressable>
+            </View>
+            {!isRecapCollapsed ? (
+              <ThemedText variant="body">{recapText}</ThemedText>
+            ) : (
+              <ThemedText variant="caption" style={styles.mutedText}>
+                Recap hidden.
+              </ThemedText>
+            )}
+            <ThemedText variant="caption" style={styles.mutedText}>
+              Recap shown before episode playback in this local preview.
+            </ThemedText>
+            <Pressable style={styles.continueToEpisodeButton}>
+              <ThemedText variant="caption" style={styles.continueToEpisodeText}>
+                Continue to episode
+              </ThemedText>
+            </Pressable>
+          </ThemedView>
+        ) : null}
+
         <View style={styles.videoPlaceholder}>
           <ThemedText variant="subtitle">Video placeholder</ThemedText>
           <ThemedText variant="caption" style={styles.mutedText}>
@@ -316,6 +357,18 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xl,
     paddingBottom: theme.spacing["3xl"],
   },
+  continueToEpisodeButton: {
+    alignItems: "center",
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  continueToEpisodeText: {
+    color: theme.colors.brand.secondary,
+    fontWeight: theme.typography.weight.medium,
+  },
   description: {
     color: theme.colors.text.secondary,
   },
@@ -340,6 +393,25 @@ const styles = StyleSheet.create({
   },
   pollCard: {
     gap: theme.spacing.md,
+  },
+  previouslyOnCard: {
+    gap: theme.spacing.sm,
+  },
+  previouslyOnHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  recapToggleButton: {
+    borderColor: theme.colors.border.subtle,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+  },
+  recapToggleText: {
+    color: theme.colors.brand.secondary,
+    fontWeight: theme.typography.weight.medium,
   },
   pollOption: {
     backgroundColor: theme.colors.background.secondary,
