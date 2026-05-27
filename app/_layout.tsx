@@ -7,6 +7,10 @@ export default function RootLayout() {
       <Stack.Screen name="shows/[showId]" options={{ title: "Show" }} />
       <Stack.Screen name="shows/[showId]/edit" options={{ title: "Edit Show" }} />
       <Stack.Screen
+        name="shows/[showId]/writers-room"
+        options={{ title: "Writers Room" }}
+      />
+      <Stack.Screen
         name="shows/[showId]/episodes/create"
         options={{ title: "Create Episode" }}
       />
